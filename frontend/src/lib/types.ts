@@ -44,6 +44,7 @@ export interface HealthStatus {
   timestamp: string;
   services: {
     chromaOnline: boolean;
+    hasGoogleKey?: boolean;
     hasOpenAiKey: boolean;
     hasGroqKey: boolean;
   };

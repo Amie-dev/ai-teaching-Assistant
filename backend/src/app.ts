@@ -26,8 +26,9 @@ export const createApp = () => {
       timestamp: new Date().toISOString(),
       services: {
         chromaOnline: chromaService.isChromaOnline(),
-        hasOpenAiKey: Boolean(config.openaiApiKey),
-        hasGroqKey: Boolean(config.groqApiKey),
+        hasGoogleKey: Boolean(config.googleApiKey && !config.googleApiKey.startsWith('your_')),
+        hasOpenAiKey: Boolean(config.openaiApiKey && !config.openaiApiKey.startsWith('your_')),
+        hasGroqKey: Boolean(config.groqApiKey && !config.groqApiKey.startsWith('your_')),
       },
     });
   });

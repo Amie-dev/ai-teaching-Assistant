@@ -11,6 +11,9 @@ export const config = {
   uploadDir: path.resolve(process.env.UPLOAD_DIR || './uploads'),
   
   // Model settings
+  googleApiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '',
+  googleEmbeddingModel: process.env.GOOGLE_EMBEDDING_MODEL || 'text-embedding-004',
+
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
   

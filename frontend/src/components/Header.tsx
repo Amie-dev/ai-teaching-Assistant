@@ -41,7 +41,13 @@ export const Header: React.FC<HeaderProps> = ({ health }) => {
 
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-slate-300">
           <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>LangGraph.js</span>
+          <span>
+            {health?.services.hasGoogleKey
+              ? 'Google Embeddings'
+              : health?.services.hasOpenAiKey
+              ? 'OpenAI Embeddings'
+              : 'Local Embeddings'}
+          </span>
         </div>
       </div>
     </header>

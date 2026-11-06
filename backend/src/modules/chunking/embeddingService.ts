@@ -1,15 +1,24 @@
 import OpenAI from 'openai';
+import { GoogleGenerativeAI, TaskType } from '@google/generative-ai';
 import { config } from '../../config.js';
 import { logger } from '../../utils/logger.js';
 
 class EmbeddingService {
   private openai: OpenAI | null = null;
+  private googleAI: GoogleGenerativeAI | null = null;
 
   constructor() {
-    this.initClient();
+    this.initClients();
   }
 
-  private initClient(): void {
+  private initClients(): void {
+    if (config.googleApiKey && !config.googleApiKey.startsWith('your_')) {
+      this.googleAI = new GoogleGenerativeAI(config.googleApiKey);
+      logger.info(`Initialized Google Generative AI for embeddings (model: ${config.googleEmbeddingModel}).`);
+    } else {
+      this.googleAI = null;
+    }
+
     if (config.openaiApiKey && !config.openaiApiKey.startsWith('your_')) {
       this.openai = new OpenAI({ apiKey: config.openaiApiKey });
     } else {
@@ -17,73 +26,164 @@ class EmbeddingService {
     }
   }
 
-  private getClient(): OpenAI | null {
+  private getGoogleClient(): GoogleGenerativeAI | null {
+    if (!this.googleAI && config.googleApiKey && !config.googleApiKey.startsWith('your_')) {
+      this.googleAI = new GoogleGenerativeAI(config.googleApiKey);
+    }
+    return this.googleAI;
+  }
+
+  private getOpenAIClient(): OpenAI | null {
     if (!this.openai && config.openaiApiKey && !config.openaiApiKey.startsWith('your_')) {
       this.openai = new OpenAI({ apiKey: config.openaiApiKey });
     }
     return this.openai;
   }
 
+  getActiveProvider(): 'google' | 'openai' | 'local' {
+    if (this.getGoogleClient()) return 'google';
+    if (this.getOpenAIClient()) return 'openai';
+    return 'local';
+  }
+
   /**
-   * Generates embeddings for an array of text strings with batching and exponential backoff retry.
+   * Generates embeddings for an array of document chunks.
+   * Priority: Google Embedding -> OpenAI Embedding -> Local Semantic Hash Embedding.
    */
   async getEmbeddings(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return [];
 
-    const client = this.getClient();
-    if (!client) {
-      logger.info('OpenAI API key not configured or placeholder detected. Using deterministic local vector embeddings.');
-      return texts.map(t => this.generateLocalFallbackEmbedding(t));
+    const google = this.getGoogleClient();
+    if (google) {
+      try {
+        return await this.getGoogleEmbeddings(google, texts, TaskType.RETRIEVAL_DOCUMENT);
+      } catch (err: any) {
+        logger.warn(`Google embedding failed (${err.message}). Trying secondary provider...`);
+      }
     }
 
-    const BATCH_SIZE = 64;
-    const allEmbeddings: number[][] = [];
-
-    try {
-      for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-        const batch = texts.slice(i, i + BATCH_SIZE);
-        const embeddings = await this.embedBatchWithRetry(client, batch);
-        allEmbeddings.push(...embeddings);
+    const openai = this.getOpenAIClient();
+    if (openai) {
+      try {
+        return await this.getOpenAIEmbeddings(openai, texts);
+      } catch (err: any) {
+        logger.warn(`OpenAI embedding failed (${err.message}). Falling back to local embeddings.`);
       }
-      return allEmbeddings;
-    } catch (err: any) {
-      if (err.status === 401) {
-        logger.warn('OpenAI API Key invalid (401). Falling back to local vector embeddings.');
-        return texts.map(t => this.generateLocalFallbackEmbedding(t));
-      }
-      throw err;
     }
+
+    logger.info('Using deterministic local vector embeddings for document chunks.');
+    return texts.map(t => this.generateLocalFallbackEmbedding(t));
   }
 
   /**
-   * Single text embedding for user queries.
+   * Generates a single embedding for a user search query.
    */
   async getQueryEmbedding(text: string): Promise<number[]> {
-    const results = await this.getEmbeddings([text]);
-    return results[0];
+    const google = this.getGoogleClient();
+    if (google) {
+      try {
+        const model = google.getGenerativeModel({ model: config.googleEmbeddingModel });
+        const res = await model.embedContent({
+          content: { role: 'user', parts: [{ text }] },
+          taskType: TaskType.RETRIEVAL_QUERY,
+        });
+        return res.embedding.values;
+      } catch (err: any) {
+        logger.warn(`Google query embedding failed (${err.message}). Trying secondary provider...`);
+      }
+    }
+
+    const openai = this.getOpenAIClient();
+    if (openai) {
+      try {
+        const results = await this.getOpenAIEmbeddings(openai, [text]);
+        return results[0];
+      } catch (err: any) {
+        logger.warn(`OpenAI query embedding failed (${err.message}). Falling back to local embeddings.`);
+      }
+    }
+
+    return this.generateLocalFallbackEmbedding(text);
   }
 
-  private async embedBatchWithRetry(
-    client: OpenAI,
-    batch: string[],
-    retries = 2,
-    delayMs = 1000
+  /**
+   * Google text-embedding-004 batch embedding with retry
+   */
+  private async getGoogleEmbeddings(
+    google: GoogleGenerativeAI,
+    texts: string[],
+    taskType: TaskType,
+    batchSize = 50,
+    retries = 2
   ): Promise<number[][]> {
-    try {
-      const response = await client.embeddings.create({
-        model: config.embeddingModel,
-        input: batch,
-      });
+    const model = google.getGenerativeModel({ model: config.googleEmbeddingModel });
+    const allEmbeddings: number[][] = [];
 
-      return response.data.map(item => item.embedding);
-    } catch (error: any) {
-      if (retries > 0 && (error.status === 429 || error.status >= 500)) {
-        logger.warn(`OpenAI embedding rate limited (${error.status}). Retrying in ${delayMs}ms...`);
-        await new Promise(res => setTimeout(res, delayMs));
-        return this.embedBatchWithRetry(client, batch, retries - 1, delayMs * 2);
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize);
+      let attempts = retries;
+
+      while (attempts >= 0) {
+        try {
+          const res = await model.batchEmbedContents({
+            requests: batch.map(t => ({
+              content: { role: 'user', parts: [{ text: t }] },
+              taskType,
+            })),
+          });
+          allEmbeddings.push(...res.embeddings.map(e => e.values));
+          break;
+        } catch (err: any) {
+          if (attempts > 0 && (err.status === 429 || err.message?.includes('429'))) {
+            logger.warn(`Google rate limit. Retrying in 1500ms...`);
+            await new Promise(r => setTimeout(r, 1500));
+            attempts--;
+          } else {
+            throw err;
+          }
+        }
       }
-      throw error;
     }
+
+    return allEmbeddings;
+  }
+
+  /**
+   * OpenAI text-embedding-3-small batch embedding with retry
+   */
+  private async getOpenAIEmbeddings(
+    client: OpenAI,
+    texts: string[],
+    batchSize = 64,
+    retries = 2
+  ): Promise<number[][]> {
+    const allEmbeddings: number[][] = [];
+
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize);
+      let attempts = retries;
+
+      while (attempts >= 0) {
+        try {
+          const response = await client.embeddings.create({
+            model: config.embeddingModel,
+            input: batch,
+          });
+          allEmbeddings.push(...response.data.map(item => item.embedding));
+          break;
+        } catch (error: any) {
+          if (attempts > 0 && (error.status === 429 || error.status >= 500)) {
+            logger.warn(`OpenAI embedding rate limited (${error.status}). Retrying in 1000ms...`);
+            await new Promise(r => setTimeout(r, 1000));
+            attempts--;
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
+
+    return allEmbeddings;
   }
 
   /**
@@ -112,7 +212,6 @@ class EmbeddingService {
       const index = Math.abs(hash) % dimensions;
       vector[index] += weight;
 
-      // Add bi-grams for adjacent non-stopwords
       if (i < words.length - 1 && !isStopword && !stopwords.has(words[i + 1])) {
         const bigram = `${word}_${words[i + 1]}`;
         let bHash = 5381;
@@ -123,7 +222,6 @@ class EmbeddingService {
       }
     }
 
-    // L2 Normalize
     const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
     if (magnitude === 0) return vector;
     return vector.map(val => val / magnitude);
