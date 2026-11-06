@@ -30,7 +30,7 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v2/heartbeat || curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/localhost/8000"]
       interval: 5s
       timeout: 5s
       retries: 5
