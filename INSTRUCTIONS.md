@@ -257,3 +257,4 @@ cd backend && npx prisma db push
 
 ### ChromaDB Offline Fallback
 If the ChromaDB container is ever stopped, the backend automatically activates an in-memory vector store backed by `uploads/vector_store.json`, ensuring zero downtime during demonstrations.
+
