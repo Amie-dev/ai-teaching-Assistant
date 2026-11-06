@@ -32,7 +32,7 @@ export const config = {
   // Retrieval settings
   topK: parseInt(process.env.TOP_K || '4', 10),
   // Cosine distance threshold (in Chroma, cosine distance = 1 - cosine similarity; lower is closer. Or similarity 0-1)
-  relevanceThreshold: parseFloat(process.env.RELEVANCE_THRESHOLD || '0.15'), // Minimum similarity or max distance
+  relevanceThreshold: parseFloat(process.env.RELEVANCE_THRESHOLD || '0.55'), // Minimum similarity or max distance
   
   // Socratic agent parameters
   socraticTurnLimit: parseInt(process.env.SOCRATIC_TURN_LIMIT || '3', 10),

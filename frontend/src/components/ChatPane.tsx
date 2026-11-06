@@ -35,7 +35,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check if the latest assistant message was a guiding question in Socratic mode
   const lastMessage = messages[messages.length - 1];
   const canRequestDirectAnswer =
     lastMessage &&
@@ -78,27 +77,33 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-slate-950/20">
+    <section
+      aria-label="Chat Conversation"
+      className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-slate-950/20"
+    >
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center py-12 px-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 shadow-lg shadow-cyan-500/10">
-              <Sparkles className="w-7 h-7" />
+              <Sparkles className="w-7 h-7" aria-hidden="true" />
             </div>
 
-            <h2 className="text-xl font-bold text-slate-100 tracking-tight">
-              Welcome to your AI Teaching Assistant
+            <h2 className="text-xl font-bold text-slate-100 tracking-tight text-balance">
+              Welcome to Your AI Teaching Assistant
             </h2>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+            <p className="text-sm text-slate-400 mt-2 leading-relaxed text-pretty">
               Ask any question from your course materials. The assistant automatically identifies
               factual queries to deliver concise grounded answers, or conceptual questions to guide
               you through interactive Socratic reasoning.
             </p>
 
             {!hasDocuments && (
-              <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2 max-w-md">
-                <HelpCircle className="w-4 h-4 shrink-0 text-amber-400" />
+              <div
+                role="note"
+                className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2 max-w-md"
+              >
+                <HelpCircle className="w-4 h-4 shrink-0 text-amber-400" aria-hidden="true" />
                 <span>
                   Tip: Upload your course PDF in the left panel to ground answers in your syllabus.
                 </span>
@@ -108,42 +113,46 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             {/* Starter Prompt Suggestions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8 w-full text-left">
               <button
+                type="button"
                 onClick={() => handleSamplePrompt('What is the difference between a process and a thread?')}
-                className="p-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 group"
+                className="p-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 transition-colors text-xs text-slate-300 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
                 <div className="flex items-center gap-2 font-semibold text-blue-400 mb-1">
-                  <BookOpen className="w-3.5 h-3.5" /> Factual / Direct Query
+                  <BookOpen className="w-3.5 h-3.5" aria-hidden="true" /> Factual / Direct Query
                 </div>
                 <div className="flex items-center justify-between text-slate-400 group-hover:text-slate-200">
-                  <span>"What is the difference between a process and a thread?"</span>
-                  <ArrowRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                  <span>&ldquo;What is the difference between a process and a thread?&rdquo;</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
                 </div>
               </button>
 
               <button
+                type="button"
                 onClick={() => handleSamplePrompt('Why does Quicksort degrade to O(n^2) time on sorted input?')}
-                className="p-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 transition-all text-xs text-slate-300 group"
+                className="p-3.5 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 transition-colors text-xs text-slate-300 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
               >
                 <div className="flex items-center gap-2 font-semibold text-purple-400 mb-1">
-                  <Sparkles className="w-3.5 h-3.5" /> Conceptual / Socratic Query
+                  <Sparkles className="w-3.5 h-3.5" aria-hidden="true" /> Conceptual / Socratic Query
                 </div>
                 <div className="flex items-center justify-between text-slate-400 group-hover:text-slate-200">
-                  <span>"Why does Quicksort degrade to O(n^2) time on sorted input?"</span>
-                  <ArrowRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                  <span>&ldquo;Why does Quicksort degrade to O(n^2) time on sorted input?&rdquo;</span>
+                  <ArrowRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
                 </div>
               </button>
             </div>
           </div>
         ) : (
           messages.map((msg) => (
-            <div
+            <article
               key={msg.id}
+              aria-label={`${msg.role === 'student' ? 'Student question' : 'Assistant answer'}`}
               className={`flex gap-3 max-w-3xl ${
                 msg.role === 'student' ? 'ml-auto flex-row-reverse' : 'mr-auto'
               }`}
             >
               {/* Avatar */}
               <div
+                aria-hidden="true"
                 className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white shadow-md ${
                   msg.role === 'student'
                     ? 'bg-gradient-to-tr from-cyan-600 to-blue-600'
@@ -177,7 +186,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
                 {/* Sources Chips */}
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1" aria-label="Referenced sources">
                     <span className="text-[11px] font-medium text-slate-400 mr-1">
                       Sources:
                     </span>
@@ -191,19 +200,19 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   </div>
                 )}
               </div>
-            </div>
+            </article>
           ))
         )}
 
         {/* Loading Bubble */}
         {isLoading && (
-          <div className="flex gap-3 max-w-3xl mr-auto">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shrink-0 text-white shadow-md">
+          <div className="flex gap-3 max-w-3xl mr-auto" aria-live="polite">
+            <div aria-hidden="true" className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shrink-0 text-white shadow-md">
               <Bot className="w-4 h-4" />
             </div>
             <div className="p-4 rounded-2xl rounded-tl-none bg-slate-900/80 border border-slate-800 text-slate-300 text-sm flex items-center gap-2.5">
-              <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-              <span>Analyzing course material & reasoning...</span>
+              <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" aria-hidden="true" />
+              <span>Analyzing course material &amp; reasoning…</span>
             </div>
           </div>
         )}
@@ -213,15 +222,16 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
       {/* Socratic Skip Control (User Story U9) */}
       {canRequestDirectAnswer && !isLoading && (
-        <div className="px-6 py-2 bg-purple-950/20 border-t border-purple-500/20 flex items-center justify-between animate-in fade-in duration-200">
+        <div className="px-6 py-2 bg-purple-950/20 border-t border-purple-500/20 flex items-center justify-between">
           <span className="text-xs text-purple-300">
             Trying to reason through? You can also skip guidance to see the full answer.
           </span>
           <button
+            type="button"
             onClick={() => handleSubmit(undefined, true)}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-md transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white shadow-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
           >
-            <RefreshCw className="w-3 h-3" /> Just give me the answer
+            <RefreshCw className="w-3 h-3" aria-hidden="true" /> Just Give Me the Answer
           </button>
         </div>
       )}
@@ -229,13 +239,15 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       {/* Chat Input Bar */}
       <div className="p-4 border-t border-slate-800 bg-slate-900/40 backdrop-blur-md">
         <form onSubmit={(e) => handleSubmit(e)} className="flex items-end gap-2 max-w-4xl mx-auto">
-          <div className="flex-1 relative rounded-2xl bg-slate-800/80 border border-slate-700/80 focus-within:border-cyan-500/80 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all shadow-inner">
+          <div className="flex-1 relative rounded-2xl bg-slate-800/80 border border-slate-700/80 focus-within:border-cyan-500/80 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-colors shadow-inner">
             <textarea
               ref={inputRef}
+              name="question"
+              aria-label="Ask a course question"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask a factual question (e.g. definition) or conceptual question (e.g. why/how)..."
+              placeholder="Ask a factual question (e.g. definition) or conceptual question (e.g. why/how)…"
               rows={1}
               className="w-full bg-transparent px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 resize-none focus:outline-none max-h-32 min-h-[48px]"
             />
@@ -244,17 +256,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 transition-all cursor-pointer shrink-0"
+            aria-label="Send message"
+            className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 transition-colors cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             title="Send message"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-5 h-5" aria-hidden="true" />
           </button>
         </form>
         <p className="text-[11px] text-center text-slate-500 mt-2">
           Strictly grounded in your uploaded documents · Press Enter to send, Shift+Enter for new line
         </p>
       </div>
-    </div>
+    </section>
   );
 };
-
