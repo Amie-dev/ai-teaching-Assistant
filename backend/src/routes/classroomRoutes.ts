@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../db.js';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
+import { chromaService } from '../modules/vectorstore/chromaService.js';
 
 export const classroomRouter = Router();
 
@@ -14,33 +15,30 @@ function generateJoinCode(): string {
   return code;
 }
 
-// GET /api/classrooms - List enrolled classrooms
+// GET /api/classrooms - List all classrooms with active role
 classroomRouter.get('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const memberships = await prisma.membership.findMany({
-      where: { userId: req.user!.id },
+    const isTeacher = req.user?.role === 'TEACHER';
+
+    const allClassrooms = await prisma.classroom.findMany({
       include: {
-        classroom: {
-          include: {
-            _count: {
-              select: {
-                memberships: true,
-                resources: true,
-                halls: true,
-              },
-            },
+        _count: {
+          select: {
+            memberships: true,
+            resources: true,
+            halls: true,
           },
         },
       },
-      orderBy: { joinedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const classrooms = memberships.map((m) => ({
-      ...m.classroom,
-      role: m.role,
-      memberCount: m.classroom._count.memberships,
-      resourceCount: m.classroom._count.resources,
-      hallCount: m.classroom._count.halls,
+    const classrooms = allClassrooms.map((c) => ({
+      ...c,
+      role: isTeacher ? 'TEACHER' : 'STUDENT',
+      memberCount: c._count.memberships,
+      resourceCount: c._count.resources,
+      hallCount: c._count.halls,
     }));
 
     res.json({ classrooms });
@@ -50,7 +48,7 @@ classroomRouter.get('/', requireAuth, async (req: AuthRequest, res: Response) =>
   }
 });
 
-// POST /api/classrooms - Create a new classroom
+// POST /api/classrooms - Create a new classroom (Teacher)
 classroomRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { name, subject, description } = req.body;
@@ -124,6 +122,28 @@ classroomRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) =
   }
 });
 
+// DELETE /api/classrooms/:id - Delete a classroom (Teacher)
+classroomRouter.delete('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const classroomId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    // Delete associated vector chunks from ChromaDB
+    const resources = await prisma.resource.findMany({ where: { classroomId } });
+    for (const r of resources) {
+      await chromaService.deleteDocumentChunks(r.id);
+    }
+
+    await prisma.classroom.delete({
+      where: { id: classroomId },
+    });
+
+    res.json({ success: true, message: 'Classroom deleted successfully.' });
+  } catch (err: any) {
+    logger.error('Failed to delete classroom:', err);
+    res.status(500).json({ error: 'Failed to delete classroom' });
+  }
+});
+
 // POST /api/classrooms/join - Join with join code
 classroomRouter.post('/join', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
@@ -145,40 +165,11 @@ classroomRouter.post('/join', requireAuth, async (req: AuthRequest, res: Respons
       return;
     }
 
-    const existing = await prisma.membership.findUnique({
-      where: {
-        userId_classroomId: {
-          userId: req.user!.id,
-          classroomId: classroom.id,
-        },
-      },
-    });
-
-    if (existing) {
-      res.json({
-        classroom: {
-          ...classroom,
-          role: existing.role,
-          memberCount: classroom._count.memberships,
-        },
-        message: 'Already enrolled in this classroom.',
-      });
-      return;
-    }
-
-    const membership = await prisma.membership.create({
-      data: {
-        userId: req.user!.id,
-        classroomId: classroom.id,
-        role: 'STUDENT',
-      },
-    });
-
-    res.status(201).json({
+    res.json({
       classroom: {
         ...classroom,
-        role: membership.role,
-        memberCount: classroom._count.memberships + 1,
+        role: 'STUDENT',
+        memberCount: classroom._count.memberships,
       },
       message: 'Successfully joined classroom.',
     });
@@ -188,24 +179,11 @@ classroomRouter.post('/join', requireAuth, async (req: AuthRequest, res: Respons
   }
 });
 
-// GET /api/classrooms/:id - Classroom overview and user role
+// GET /api/classrooms/:id - Classroom overview
 classroomRouter.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const classroomId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-
-    const membership = await prisma.membership.findUnique({
-      where: {
-        userId_classroomId: {
-          userId: req.user!.id,
-          classroomId,
-        },
-      },
-    });
-
-    if (!membership) {
-      res.status(403).json({ error: 'Access denied. You are not enrolled in this classroom.' });
-      return;
-    }
+    const isTeacher = req.user?.role === 'TEACHER';
 
     const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId },
@@ -225,7 +203,7 @@ classroomRouter.get('/:id', requireAuth, async (req: AuthRequest, res: Response)
     res.json({
       classroom: {
         ...classroom,
-        role: membership.role,
+        role: isTeacher ? 'TEACHER' : 'STUDENT',
         memberCount: classroom._count.memberships,
       },
     });
@@ -289,25 +267,11 @@ classroomRouter.get('/:id/halls', requireAuth, async (req: AuthRequest, res: Res
   }
 });
 
-// POST /api/classrooms/:id/halls - Create a hall (Teacher/TA)
+// POST /api/classrooms/:id/halls - Create a hall (Teacher OR Student can create!)
 classroomRouter.post('/:id/halls', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const classroomId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { name, description, topic, type } = req.body;
-
-    const membership = await prisma.membership.findUnique({
-      where: {
-        userId_classroomId: {
-          userId: req.user!.id,
-          classroomId,
-        },
-      },
-    });
-
-    if (!membership || (membership.role !== 'TEACHER' && membership.role !== 'TA')) {
-      res.status(403).json({ error: 'Only teachers and TAs can create discussion halls.' });
-      return;
-    }
 
     if (!name) {
       res.status(400).json({ error: 'Hall name is required.' });
@@ -324,7 +288,7 @@ classroomRouter.post('/:id/halls', requireAuth, async (req: AuthRequest, res: Re
         topic: topic?.trim() || null,
         type: type || 'OPEN',
         status: 'ACTIVE',
-        createdById: req.user!.id,
+        createdById: req.user?.id || null,
       },
     });
 
@@ -376,30 +340,6 @@ classroomRouter.patch('/halls/:hid', requireAuth, async (req: AuthRequest, res: 
     const hallId = Array.isArray(req.params.hid) ? req.params.hid[0] : req.params.hid;
     const { status, name, topic } = req.body;
 
-    const hall = await prisma.hall.findUnique({
-      where: { id: hallId },
-      include: {
-        classroom: {
-          include: {
-            memberships: {
-              where: { userId: req.user!.id },
-            },
-          },
-        },
-      },
-    });
-
-    if (!hall) {
-      res.status(404).json({ error: 'Hall not found.' });
-      return;
-    }
-
-    const userMembership = hall.classroom.memberships[0];
-    if (!userMembership || (userMembership.role !== 'TEACHER' && userMembership.role !== 'TA')) {
-      res.status(403).json({ error: 'Only teachers and TAs can modify discussion halls.' });
-      return;
-    }
-
     const updated = await prisma.hall.update({
       where: { id: hallId },
       data: {
@@ -415,4 +355,3 @@ classroomRouter.patch('/halls/:hid', requireAuth, async (req: AuthRequest, res: 
     res.status(500).json({ error: 'Failed to update hall' });
   }
 });
-

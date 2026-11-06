@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Loader2,
   Files,
+  Lock,
 } from 'lucide-react';
 
 interface DocumentPanelProps {
@@ -17,6 +18,7 @@ interface DocumentPanelProps {
   onUpload: (files: File[]) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   isLoading: boolean;
+  isTeacher?: boolean;
 }
 
 export const DocumentPanel: React.FC<DocumentPanelProps> = ({
@@ -24,6 +26,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   onUpload,
   onDelete,
   isLoading,
+  isTeacher = true,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -52,6 +55,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!isTeacher) return;
     e.preventDefault();
     setIsDragging(true);
   };
@@ -61,6 +65,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   };
 
   const handleDrop = async (e: React.DragEvent) => {
+    if (!isTeacher) return;
     e.preventDefault();
     setIsDragging(false);
     await handleFiles(e.dataTransfer.files);
@@ -81,46 +86,55 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
       <div className="p-4 border-b border-[#1f293d]">
         <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
           <Files className="w-4 h-4 text-[#FF5B22]" aria-hidden="true" />
-          Course Documents
+          Course Resources
         </h2>
         <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-          Upload syllabus PDFs, notes, or slides to ground assistant responses.
+          {isTeacher
+            ? 'Upload syllabus PDFs, slides, or notes to ground assistant responses.'
+            : 'Course materials uploaded by your instructor for AI grounding.'}
         </p>
 
-        {/* Agorapulse-style Coral Dropzone Button */}
-        <button
-          type="button"
-          aria-label="Upload PDF course documents"
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`w-full mt-3 p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5B22] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1120] group ${
-            isDragging
-              ? 'border-[#FF5B22] bg-[#FF5B22]/10 scale-[1.01]'
-              : 'border-[#232e48] hover:border-[#FF5B22]/60 bg-[#121829]/60 hover:bg-[#121829]'
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
+        {/* Teacher Upload Dropzone */}
+        {isTeacher ? (
+          <button
+            type="button"
+            aria-label="Upload PDF course documents"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`w-full mt-3 p-4 rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5B22] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1120] group ${
+              isDragging
+                ? 'border-[#FF5B22] bg-[#FF5B22]/10 scale-[1.01]'
+                : 'border-[#232e48] hover:border-[#FF5B22]/60 bg-[#121829]/60 hover:bg-[#121829]'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFiles(e.target.files)}
+            />
 
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-[#FF5B22] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-            <Upload className="w-5 h-5" aria-hidden="true" />
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 text-[#FF5B22] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+              <Upload className="w-5 h-5" aria-hidden="true" />
+            </div>
+
+            <span className="text-xs font-semibold text-slate-200 group-hover:text-white">
+              Click to upload or drag &amp; drop
+            </span>
+            <span className="text-[11px] text-slate-400 mt-0.5">
+              PDF files only (syllabus, notes, books)
+            </span>
+          </button>
+        ) : (
+          <div className="mt-3 p-3 rounded-xl bg-[#121829] border border-[#232e48] text-xs text-slate-400 flex items-center gap-2">
+            <Lock className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>Teacher managed. Students can read and query all course resources.</span>
           </div>
-
-          <span className="text-xs font-semibold text-slate-200 group-hover:text-white">
-            Click to upload or drag &amp; drop
-          </span>
-          <span className="text-[11px] text-slate-400 mt-0.5">
-            PDF files only (lectures, notes, books)
-          </span>
-        </button>
+        )}
 
         {errorMsg && (
           <div
@@ -154,7 +168,9 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
             </div>
             <p className="text-xs font-medium text-slate-300">No documents indexed yet</p>
             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-              Upload course PDFs to enable accurate page citations and Socratic explanations.
+              {isTeacher
+                ? 'Upload course PDFs to enable page citations and Socratic explanations.'
+                : 'Your instructor has not uploaded any PDFs to this classroom yet.'}
             </p>
           </div>
         ) : (
@@ -194,16 +210,18 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                 </div>
               </div>
 
-              {/* Accessible Delete button */}
-              <button
-                type="button"
-                onClick={() => onDelete(doc.documentId)}
-                aria-label={`Remove document ${doc.fileName}`}
-                className="opacity-0 group-hover/item:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                title={`Remove ${doc.fileName}`}
-              >
-                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-              </button>
+              {/* Accessible Delete button (Teacher only) */}
+              {isTeacher && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(doc.documentId)}
+                  aria-label={`Remove document ${doc.fileName}`}
+                  className="opacity-0 group-hover/item:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                  title={`Remove ${doc.fileName}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              )}
             </div>
           ))
         )}
@@ -213,7 +231,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
       <div className="p-3 border-t border-[#1f293d] bg-[#090d16] text-[11px] text-slate-400 flex items-center justify-between">
         <span>Persistent Vector Store</span>
         <span className="font-semibold text-emerald-400 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Online
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> ChromaDB
         </span>
       </div>
     </aside>

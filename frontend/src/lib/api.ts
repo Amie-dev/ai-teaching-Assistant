@@ -13,23 +13,23 @@ import {
 
 const API_BASE = '/api';
 
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('ai_tutor_token');
+export type UserRole = 'TEACHER' | 'STUDENT';
+
+export function getActiveRole(): UserRole {
+  if (typeof window === 'undefined') return 'TEACHER';
+  return (localStorage.getItem('ai_tutor_role') as UserRole) || 'TEACHER';
 }
 
-export function setAuthToken(token: string | null) {
+export function setActiveRole(role: UserRole) {
   if (typeof window === 'undefined') return;
-  if (token) {
-    localStorage.setItem('ai_tutor_token', token);
-  } else {
-    localStorage.removeItem('ai_tutor_token');
-  }
+  localStorage.setItem('ai_tutor_role', role);
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const role = getActiveRole();
+  return {
+    'x-user-role': role,
+  };
 }
 
 async function safeParseJson<T>(res: Response, defaultErrorMsg: string): Promise<T> {
@@ -50,49 +50,6 @@ async function safeParseJson<T>(res: Response, defaultErrorMsg: string): Promise
   }
 
   return data as T;
-}
-
-// ----------------- Auth APIs -----------------
-
-export async function loginUser(email: string, password: string): Promise<{ user: User; token: string }> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await safeParseJson<{ user: User; token: string }>(res, 'Failed to login');
-  setAuthToken(data.token);
-  return data;
-}
-
-export async function signupUser(name: string, email: string, password: string): Promise<{ user: User; token: string }> {
-  const res = await fetch(`${API_BASE}/auth/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password }),
-  });
-  const data = await safeParseJson<{ user: User; token: string }>(res, 'Failed to signup');
-  setAuthToken(data.token);
-  return data;
-}
-
-export async function getCurrentUser(): Promise<User | null> {
-  const token = getAuthToken();
-  if (!token) return null;
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: { ...getAuthHeaders() },
-    });
-    if (!res.ok) {
-      setAuthToken(null);
-      return null;
-    }
-    const data = await safeParseJson<{ user: User }>(res, 'Failed to get current user');
-    return data.user;
-  } catch {
-    return null;
-  }
 }
 
 // ----------------- Classroom APIs -----------------
@@ -116,6 +73,14 @@ export async function createClassroom(name: string, subject: string, description
   });
   const data = await safeParseJson<{ classroom: Classroom }>(res, 'Failed to create classroom');
   return data.classroom;
+}
+
+export async function deleteClassroom(classroomId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/classrooms/${classroomId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  });
+  await safeParseJson(res, 'Failed to delete classroom');
 }
 
 export async function joinClassroom(joinCode: string): Promise<Classroom> {

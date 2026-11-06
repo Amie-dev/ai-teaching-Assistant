@@ -8,7 +8,6 @@ import { DocumentPanel } from '../components/DocumentPanel';
 import { ChatPane } from '../components/ChatPane';
 import { ClassroomMembers } from '../components/ClassroomMembers';
 import { SourceViewer } from '../components/SourceViewer';
-import { AuthModal } from '../components/AuthModal';
 import {
   ChatMessage,
   Classroom,
@@ -25,22 +24,22 @@ import {
   sendChatMessage,
   fetchClassrooms,
   createClassroom,
+  deleteClassroom,
   joinClassroom,
-  getCurrentUser,
-  loginUser,
-  setAuthToken,
+  getActiveRole,
+  setActiveRole,
+  UserRole,
 } from '../lib/api';
 import {
   MessageSquare,
   Bot,
   Files,
   Users,
-  Sparkles,
 } from 'lucide-react';
 
 export default function Home() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeRole, setActiveRoleState] = useState<UserRole>('TEACHER');
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [activeClassroomId, setActiveClassroomId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'halls' | 'assistant' | 'resources' | 'members'>('halls');
@@ -50,42 +49,29 @@ export default function Home() {
   const [selectedSource, setSelectedSource] = useState<SourceCitation | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
-  // Initial authentication & data load
-  useEffect(() => {
-    const initApp = async () => {
-      try {
-        const [healthRes] = await Promise.all([
-          fetchHealth().catch(() => null),
-        ]);
-        if (healthRes) setHealth(healthRes);
-
-        // Try getting logged-in user or auto-login with default teacher demo
-        let user = await getCurrentUser();
-        if (!user) {
-          try {
-            const loginRes = await loginUser('teacher@brainware.edu', 'teacher123');
-            user = loginRes.user;
-          } catch {
-            // Backend might be offline
-          }
-        }
-        setCurrentUser(user);
-
-        if (user) {
-          const crList = await fetchClassrooms().catch(() => []);
-          setClassrooms(crList);
-          if (crList.length > 0) {
-            setActiveClassroomId(crList[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to initialize app:', err);
+  // Load classrooms and health
+  const loadClassrooms = async () => {
+    try {
+      const crList = await fetchClassrooms();
+      setClassrooms(crList);
+      if (crList.length > 0 && (!activeClassroomId || !crList.some((c) => c.id === activeClassroomId))) {
+        setActiveClassroomId(crList[0].id);
       }
-    };
+    } catch (err) {
+      console.error('Failed to load classrooms:', err);
+    }
+  };
 
-    initApp();
+  useEffect(() => {
+    const role = getActiveRole();
+    setActiveRoleState(role);
+
+    fetchHealth()
+      .then(setHealth)
+      .catch(() => null);
+
+    loadClassrooms();
   }, []);
 
   // Reload classroom resources when active classroom changes
@@ -98,14 +84,31 @@ export default function Home() {
 
   const activeClassroom = classrooms.find((c) => c.id === activeClassroomId) || classrooms[0] || null;
 
-  // Handle classroom creation
+  // Handle Role Toggle (Teacher vs Student)
+  const handleRoleChange = (role: UserRole) => {
+    setActiveRole(role);
+    setActiveRoleState(role);
+    loadClassrooms();
+  };
+
+  // Handle classroom creation (Teacher)
   const handleCreateClassroom = async (name: string, subject: string, description?: string) => {
     const newCr = await createClassroom(name, subject, description);
     setClassrooms((prev) => [newCr, ...prev]);
     setActiveClassroomId(newCr.id);
   };
 
-  // Handle classroom join
+  // Handle classroom deletion (Teacher)
+  const handleDeleteClassroom = async (classroomId: string) => {
+    await deleteClassroom(classroomId);
+    const updated = classrooms.filter((c) => c.id !== classroomId);
+    setClassrooms(updated);
+    if (activeClassroomId === classroomId) {
+      setActiveClassroomId(updated[0]?.id || null);
+    }
+  };
+
+  // Handle classroom join (Student / Teacher)
   const handleJoinClassroom = async (joinCode: string) => {
     const joined = await joinClassroom(joinCode);
     setClassrooms((prev) => {
@@ -115,7 +118,7 @@ export default function Home() {
     setActiveClassroomId(joined.id);
   };
 
-  // Handle uploading documents
+  // Handle uploading documents (Teacher)
   const handleUpload = async (files: File[]) => {
     setIsUploading(true);
     try {
@@ -129,7 +132,7 @@ export default function Home() {
     }
   };
 
-  // Handle deleting a document
+  // Handle deleting a document (Teacher)
   const handleDelete = async (id: string) => {
     await deleteDocument(id);
     setDocuments((prev) => prev.filter((d) => d.documentId !== id));
@@ -173,22 +176,14 @@ export default function Home() {
     }
   };
 
-  // Auth callbacks
-  const handleAuthSuccess = async (user: User) => {
-    setCurrentUser(user);
-    const crList = await fetchClassrooms().catch(() => []);
-    setClassrooms(crList);
-    if (crList.length > 0) {
-      setActiveClassroomId(crList[0].id);
-    }
+  const currentUser: User = {
+    id: activeRole === 'TEACHER' ? 'teacher-id' : 'student-id',
+    name: activeRole === 'TEACHER' ? 'Prof. Ria Pyne (Teacher)' : 'Aminul Islam (Student)',
+    email: activeRole === 'TEACHER' ? 'teacher@brainware.edu' : 'student@brainware.edu',
+    avatar: activeRole === 'TEACHER' ? '👩‍🏫' : '👨‍🎓',
   };
 
-  const handleLogout = () => {
-    setAuthToken(null);
-    setCurrentUser(null);
-    setClassrooms([]);
-    setActiveClassroomId(null);
-  };
+  const isTeacher = activeRole === 'TEACHER';
 
   return (
     <div className="flex h-screen w-screen bg-[#0a0e1a] text-slate-100 overflow-hidden font-sans">
@@ -198,22 +193,22 @@ export default function Home() {
         activeClassroomId={activeClassroomId}
         onSelectClassroom={setActiveClassroomId}
         onCreateClassroom={handleCreateClassroom}
+        onDeleteClassroom={handleDeleteClassroom}
         onJoinClassroom={handleJoinClassroom}
-        currentUser={currentUser}
-        onOpenAuth={() => setShowAuthModal(true)}
+        activeRole={activeRole}
       />
 
       {/* 2. Main Content Wrapper */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Top Header */}
+        {/* Top Header with Role Switcher */}
         <Header
           health={health}
           classroom={activeClassroom}
-          currentUser={currentUser}
-          onOpenAuth={() => setShowAuthModal(true)}
+          activeRole={activeRole}
+          onRoleChange={handleRoleChange}
         />
 
-        {/* Classroom Secondary Nav Tabs */}
+        {/* Classroom Navigation Tabs */}
         {activeClassroom && (
           <nav
             aria-label="Classroom Sections"
@@ -300,6 +295,7 @@ export default function Home() {
                 onUpload={handleUpload}
                 onDelete={handleDelete}
                 isLoading={isUploading}
+                isTeacher={isTeacher}
               />
               <ChatPane
                 messages={messages}
@@ -318,6 +314,7 @@ export default function Home() {
                 onUpload={handleUpload}
                 onDelete={handleDelete}
                 isLoading={isUploading}
+                isTeacher={isTeacher}
               />
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0a0e1a]">
                 <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#FF5B22] mb-4 shadow-lg shadow-orange-500/10">
@@ -351,16 +348,6 @@ export default function Home() {
           )}
         </div>
       </div>
-
-      {/* Auth / Account Switcher Modal */}
-      {showAuthModal && (
-        <AuthModal
-          currentUser={currentUser}
-          onClose={() => setShowAuthModal(false)}
-          onAuthSuccess={handleAuthSuccess}
-          onLogout={handleLogout}
-        />
-      )}
     </div>
   );
 }

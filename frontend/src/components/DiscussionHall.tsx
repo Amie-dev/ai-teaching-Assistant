@@ -173,16 +173,14 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Discussion Halls
           </h2>
-          {isTeacherOrTa && (
-            <button
-              type="button"
-              onClick={() => setIsCreatingHall(true)}
-              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#182035] transition-colors"
-              title="Create new hall"
-            >
-              <Plus className="w-4 h-4 text-[#FF5B22]" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setIsCreatingHall(true)}
+            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#182035] transition-colors cursor-pointer"
+            title="Create new discussion hall"
+          >
+            <Plus className="w-4 h-4 text-[#FF5B22]" />
+          </button>
         </div>
 
         {/* Channels List */}
