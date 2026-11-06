@@ -68,6 +68,9 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
     if (!activeHall) return;
 
     const socket = getSocket();
+    if (!socket.connected) {
+      socket.connect();
+    }
 
     // Fetch initial messages
     fetchHallMessages(activeHall.id)
@@ -83,7 +86,18 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
 
     const handleNewMessage = (msg: HallMessage) => {
       if (msg.hallId === activeHall.id) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          // Reconcile optimistic temp messages or prevent duplicates
+          const existingIndex = prev.findIndex(
+            (m) => m.id === msg.id || (m.id.startsWith('temp-') && m.text === msg.text)
+          );
+          if (existingIndex !== -1) {
+            const next = [...prev];
+            next[existingIndex] = msg;
+            return next;
+          }
+          return [...prev, msg];
+        });
       }
     };
 
@@ -109,7 +123,7 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
       socket.off('presence:update', handlePresence);
       socket.off('assistant:thinking', handleThinking);
     };
-  }, [activeHall, currentUser]);
+  }, [activeHall?.id, currentUser?.id, currentUser?.name]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -121,6 +135,27 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
     if (!trimmed || !activeHall || activeHall.status === 'LOCKED') return;
 
     const socket = getSocket();
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: HallMessage = {
+      id: tempId,
+      hallId: activeHall.id,
+      senderId: currentUser?.id,
+      senderName: currentUser?.name || 'Student',
+      isAssistant: false,
+      text: trimmed,
+      routeLabel: null,
+      sources: [],
+      pinned: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Instant optimistic UI update
+    setMessages((prev) => [...prev, optimisticMsg]);
+
     socket.emit('message:send', {
       hallId: activeHall.id,
       text: trimmed,

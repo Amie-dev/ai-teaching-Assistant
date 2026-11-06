@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/Header';
 import { ClassroomSwitcher } from '../components/ClassroomSwitcher';
 import { DiscussionHall } from '../components/DiscussionHall';
@@ -176,12 +176,15 @@ export default function Home() {
     }
   };
 
-  const currentUser: User = {
-    id: activeRole === 'TEACHER' ? 'teacher-id' : 'student-id',
-    name: activeRole === 'TEACHER' ? 'Prof. Ria Pyne (Teacher)' : 'Aminul Islam (Student)',
-    email: activeRole === 'TEACHER' ? 'teacher@brainware.edu' : 'student@brainware.edu',
-    avatar: activeRole === 'TEACHER' ? '👩‍🏫' : '👨‍🎓',
-  };
+  const currentUser: User = useMemo(
+    () => ({
+      id: activeRole === 'TEACHER' ? 'b0fbe529-4fcb-48ac-8d26-74c5a37c98c3' : 'c5d5b382-e2c6-4f69-91c7-d8a44b655758',
+      name: activeRole === 'TEACHER' ? 'Prof. Ria Pyne (Teacher)' : 'Aminul Islam (Student)',
+      email: activeRole === 'TEACHER' ? 'teacher@brainware.edu' : 'student@brainware.edu',
+      avatar: activeRole === 'TEACHER' ? '👩‍🏫' : '👨‍🎓',
+    }),
+    [activeRole]
+  );
 
   const isTeacher = activeRole === 'TEACHER';
 

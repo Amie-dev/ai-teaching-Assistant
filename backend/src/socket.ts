@@ -86,11 +86,41 @@ export function setupSocketIO(server: HttpServer): Server {
           return;
         }
 
+        // Ensure socket is joined to hall room
+        socket.join(hallId);
+
+        // Resolve valid senderId to prevent PostgreSQL foreign key constraint violations
+        let validSenderId: string | null = null;
+        if (senderId) {
+          try {
+            const userExists = await prisma.user.findUnique({
+              where: { id: senderId },
+              select: { id: true },
+            });
+            if (userExists) {
+              validSenderId = userExists.id;
+            } else {
+              // Map simulated role-based ID to real DB seeded user
+              const isStudent =
+                senderId.toLowerCase().includes('student') ||
+                senderName?.toLowerCase().includes('student');
+              const targetEmail = isStudent ? 'student@brainware.edu' : 'teacher@brainware.edu';
+              const fallbackUser = await prisma.user.findUnique({
+                where: { email: targetEmail },
+                select: { id: true },
+              });
+              validSenderId = fallbackUser?.id || null;
+            }
+          } catch {
+            validSenderId = null;
+          }
+        }
+
         // Persist human message
         const message = await prisma.message.create({
           data: {
             hallId,
-            senderId: senderId || null,
+            senderId: validSenderId,
             senderName: senderName || 'Student',
             text: text.trim(),
             isAssistant: false,
