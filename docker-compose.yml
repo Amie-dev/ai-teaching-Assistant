@@ -1,0 +1,17 @@
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: ai_teaching_assistant_chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+
