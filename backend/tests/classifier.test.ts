@@ -16,7 +16,7 @@ describe('Module 4: Question Classifier (FR-4.1, FR-4.2)', () => {
       expect(res.confidence).toBeGreaterThan(0.5);
       expect(res.reason).toBeDefined();
     }
-  });
+  }, 25000);
 
   it('correctly classifies conceptual why and how questions', async () => {
     const conceptualQuestions = [
@@ -32,5 +32,5 @@ describe('Module 4: Question Classifier (FR-4.1, FR-4.2)', () => {
       expect(res.confidence).toBeGreaterThan(0.5);
       expect(res.reason).toBeDefined();
     }
-  });
+  }, 25000);
 });

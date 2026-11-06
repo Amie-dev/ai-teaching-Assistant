@@ -55,17 +55,19 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
   return (
     <aside
       aria-label="Course Source Page Viewer"
-      className="w-96 border-l border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col h-[calc(100vh-4rem)] shadow-2xl z-10 overscroll-contain animate-in slide-in-from-right duration-200"
+      className="w-96 border-l border-[#1f293d] bg-[#0c1120] flex flex-col h-[calc(100vh-4rem)] shadow-2xl z-10 overscroll-contain animate-in slide-in-from-right duration-200"
     >
       {/* Viewer Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 border-b border-[#1f293d] flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <FileText className="w-4 h-4 text-cyan-400 shrink-0" aria-hidden="true" />
+          <div className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/25 flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4 text-[#FF5B22]" aria-hidden="true" />
+          </div>
           <div className="min-w-0">
-            <h3 className="text-xs font-semibold text-slate-200 truncate" title={source.fileName}>
+            <h3 className="text-xs font-semibold text-slate-100 truncate" title={source.fileName}>
               {source.fileName}
             </h3>
-            <p className="text-[11px] text-slate-400 tabular-nums">Page {currentPage}</p>
+            <p className="text-[11px] text-orange-400 tabular-nums font-medium">Page {currentPage}</p>
           </div>
         </div>
 
@@ -73,65 +75,64 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
           type="button"
           onClick={onClose}
           aria-label="Close source viewer"
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#182035] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5B22] cursor-pointer"
         >
           <X className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
       {/* Page Navigation Toolbar */}
-      <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800/80 flex items-center justify-between text-xs text-slate-300">
+      <div className="px-4 py-2 bg-[#121829] border-b border-[#232e48] flex items-center justify-between text-xs text-slate-300">
         <button
           type="button"
           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
           disabled={currentPage <= 1 || loading}
           aria-label="Previous page"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#182035] hover:bg-[#232e48] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 border border-[#232e48] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5B22] cursor-pointer"
         >
           <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" /> Prev
         </button>
 
-        <span className="font-medium text-slate-400 tabular-nums">Page {currentPage}</span>
+        <span className="font-semibold text-slate-300 tabular-nums">Page {currentPage}</span>
 
         <button
           type="button"
           onClick={() => setCurrentPage((p) => p + 1)}
           disabled={loading}
           aria-label="Next page"
-          className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#182035] hover:bg-[#232e48] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-200 border border-[#232e48] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5B22] cursor-pointer"
         >
           Next <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>
 
-      {/* Page Text Content */}
-      <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap select-text">
-        {loading ? (
-          <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-400" aria-live="polite">
-            <Loader2 className="w-6 h-6 animate-spin text-cyan-400" aria-hidden="true" />
-            <span>Loading page content…</span>
-          </div>
-        ) : error ? (
-          <div role="alert" className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{error}</span>
-          </div>
-        ) : pageData?.isEmpty ? (
-          <div role="note" className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>This page contains no extractable selectable text (it may be a diagram or image).</span>
-          </div>
-        ) : (
-          <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 shadow-inner">
-            {pageData?.text || 'No text extracted for this page.'}
-          </div>
-        )}
+      {/* Source Citation Info Banner */}
+      <div className="p-3 bg-orange-500/10 border-b border-orange-500/20 text-xs text-orange-200">
+        <span className="font-semibold text-[#FF5B22]">Course Citation Grounding:</span> Page{' '}
+        <span className="font-bold tabular-nums">{source.pageNumber}</span> referenced in answer
       </div>
 
-      {/* Viewer Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 flex items-center justify-between">
-        <span>Source Verified (RAG Grounded)</span>
-        <span className="text-cyan-400/80">Page Citation</span>
+      {/* Page Content Body */}
+      <div className="flex-1 overflow-y-auto p-4 text-xs font-mono leading-relaxed text-slate-200 whitespace-pre-wrap selection:bg-[#FF5B22]/30 selection:text-white">
+        {loading ? (
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-[#FF5B22]" aria-hidden="true" />
+            <span>Loading page {currentPage}…</span>
+          </div>
+        ) : error ? (
+          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        ) : pageData ? (
+          <div className="bg-[#121829] p-3.5 rounded-xl border border-[#232e48]">
+            {pageData.text || (
+              <span className="italic text-slate-400">
+                (No extracted text found on this page. May contain scanned diagram or image.)
+              </span>
+            )}
+          </div>
+        ) : null}
       </div>
     </aside>
   );
