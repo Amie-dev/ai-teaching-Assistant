@@ -21,7 +21,7 @@ async function startServer() {
       logger.info(`Environment: ${config.nodeEnv}`);
       logger.info(`ChromaDB URL: ${config.chromaUrl}`);
       logger.info(`LLM Model: ${config.groqModel} via Groq`);
-      logger.info(`Embedding Model: ${config.embeddingModel} via OpenAI`);
+      logger.info(`Embedding Model: ${config.googleApiKey && !config.googleApiKey.startsWith('your_') ? config.googleEmbeddingModel + ' via Google (Default)' : config.openaiApiKey && !config.openaiApiKey.startsWith('your_') ? config.embeddingModel + ' via OpenAI' : 'Deterministic Local Vectors'}`);
     });
   } catch (error: any) {
     logger.error('Failed to start server:', error);

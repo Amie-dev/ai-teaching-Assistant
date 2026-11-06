@@ -11,8 +11,9 @@ export const config = {
   uploadDir: path.resolve(process.env.UPLOAD_DIR || './uploads'),
   
   // Model settings
+  embeddingProvider: (process.env.EMBEDDING_PROVIDER || 'google') as 'google' | 'openai' | 'local',
   googleApiKey: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '',
-  googleEmbeddingModel: process.env.GOOGLE_EMBEDDING_MODEL || 'text-embedding-004',
+  googleEmbeddingModel: process.env.GOOGLE_EMBEDDING_MODEL || 'gemini-embedding-2',
 
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
