@@ -85,12 +85,19 @@ class ConversationService {
       conversationId: conversation.conversationId,
       classroomId,
       history: [...conversation.messages],
+      retrievedChunks: conversation.lastRetrievedChunks || [],
       socraticTurnCount: conversation.socraticTurnCount,
       forceDirectAnswer,
     };
 
     const finalState = await agenticGraph.invoke(inputState);
     const latencyMs = Date.now() - startTime;
+
+    // Cache retrieved chunks for subsequent Socratic turns
+    if (finalState.retrievedChunks && finalState.retrievedChunks.length > 0) {
+      conversation.lastRetrievedChunks = finalState.retrievedChunks;
+      conversation.lastRetrievedChunkIds = finalState.retrievedChunks.map((c: any) => c.chunkId);
+    }
 
     // Build Assistant message
     const assistantMessage: ChatMessage = {

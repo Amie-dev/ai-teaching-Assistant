@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { RouteLabel } from '../lib/types';
-import { BookOpen, HelpCircle, AlertCircle, Sparkles } from 'lucide-react';
+import { BookOpen, HelpCircle, AlertCircle, Sparkles, MessageSquare } from 'lucide-react';
 
 interface ModeBadgeProps {
   route?: RouteLabel;
@@ -11,6 +11,15 @@ interface ModeBadgeProps {
 
 export const ModeBadge: React.FC<ModeBadgeProps> = ({ route, isGuiding }) => {
   if (!route) return null;
+
+  if (route === 'conversational') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-xs">
+        <MessageSquare className="w-3 h-3" aria-hidden="true" />
+        AI Teaching Assistant
+      </span>
+    );
+  }
 
   if (route === 'factual') {
     return (

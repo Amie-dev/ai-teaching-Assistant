@@ -37,7 +37,7 @@ export interface SourceCitation {
   snippet?: string;
 }
 
-export type RouteLabel = 'factual' | 'conceptual' | 'unsupported' | 'fallback';
+export type RouteLabel = 'factual' | 'conceptual' | 'conversational' | 'unsupported' | 'fallback';
 
 export interface ClassificationResult {
   label: 'factual' | 'conceptual';
@@ -75,6 +75,7 @@ export interface ConversationRecord {
   messages: ChatMessage[];
   lastRoute?: RouteLabel;
   lastRetrievedChunkIds?: string[];
+  lastRetrievedChunks?: RetrievedChunk[];
   socraticTurnCount: number;
   activeConcept?: string;
 }

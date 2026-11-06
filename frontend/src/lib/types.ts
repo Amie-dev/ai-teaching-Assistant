@@ -79,7 +79,7 @@ export interface SourceCitation {
   snippet?: string;
 }
 
-export type RouteLabel = 'factual' | 'conceptual' | 'unsupported' | 'fallback';
+export type RouteLabel = 'factual' | 'conceptual' | 'conversational' | 'unsupported' | 'fallback';
 
 export interface ChatMessage {
   id: string;
