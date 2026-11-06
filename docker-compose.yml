@@ -1,17 +1,22 @@
 services:
-  chroma:
-    image: chromadb/chroma:latest
-    container_name: ai_teaching_assistant_chroma
-    ports:
-      - "8001:8000"
-    volumes:
-      - chroma_data:/chroma/chroma
-    environment:
-      - IS_PERSISTENT=TRUE
-      - PERSIST_DIRECTORY=/chroma/chroma
-      - ANONYMIZED_TELEMETRY=FALSE
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-tutor-postgres
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: aitutor_user
+      POSTGRES_PASSWORD: aitutor_password
+      POSTGRES_DB: aitutor
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aitutor_user -d aitutor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  chroma_data:
-
+  postgres_data:
+    driver: local

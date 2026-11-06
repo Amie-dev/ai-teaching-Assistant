@@ -33,9 +33,11 @@ router.post(
         throw new AppError('No PDF files uploaded. Please attach at least one valid PDF.', 400);
       }
 
+      const classroomId = (req.body.classroomId as string) || (req.query.classroomId as string) || undefined;
+
       const results = [];
       for (const file of files) {
-        const doc = await documentService.processUploadedFile(file);
+        const doc = await documentService.processUploadedFile(file, classroomId);
         results.push(doc);
       }
 
@@ -52,8 +54,9 @@ router.post(
 /**
  * GET /api/documents - List all documents
  */
-router.get('/', (_req: Request, res: Response) => {
-  const documents = documentService.getDocuments();
+router.get('/', (req: Request, res: Response) => {
+  const classroomId = (req.query.classroomId as string) || undefined;
+  const documents = documentService.getDocuments(classroomId);
   res.json({
     success: true,
     documents,

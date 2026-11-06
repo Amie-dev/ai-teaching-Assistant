@@ -2,14 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
+import { ClassroomSwitcher } from '../components/ClassroomSwitcher';
+import { DiscussionHall } from '../components/DiscussionHall';
 import { DocumentPanel } from '../components/DocumentPanel';
 import { ChatPane } from '../components/ChatPane';
+import { ClassroomMembers } from '../components/ClassroomMembers';
 import { SourceViewer } from '../components/SourceViewer';
+import { AuthModal } from '../components/AuthModal';
 import {
   ChatMessage,
+  Classroom,
   DocumentRecord,
   HealthStatus,
   SourceCitation,
+  User,
 } from '../lib/types';
 import {
   fetchHealth,
@@ -17,40 +23,103 @@ import {
   uploadDocuments,
   deleteDocument,
   sendChatMessage,
+  fetchClassrooms,
+  createClassroom,
+  joinClassroom,
+  getCurrentUser,
+  loginUser,
+  setAuthToken,
 } from '../lib/api';
+import {
+  MessageSquare,
+  Bot,
+  Files,
+  Users,
+  Sparkles,
+} from 'lucide-react';
 
 export default function Home() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [activeClassroomId, setActiveClassroomId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'halls' | 'assistant' | 'resources' | 'members'>('halls');
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const [selectedSource, setSelectedSource] = useState<SourceCitation | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
-  // Initial load: fetch health and documents
+  // Initial authentication & data load
   useEffect(() => {
-    const loadInitialData = async () => {
+    const initApp = async () => {
       try {
-        const [healthRes, docsRes] = await Promise.all([
+        const [healthRes] = await Promise.all([
           fetchHealth().catch(() => null),
-          fetchDocuments().catch(() => []),
         ]);
         if (healthRes) setHealth(healthRes);
-        setDocuments(docsRes);
+
+        // Try getting logged-in user or auto-login with default teacher demo
+        let user = await getCurrentUser();
+        if (!user) {
+          try {
+            const loginRes = await loginUser('teacher@brainware.edu', 'teacher123');
+            user = loginRes.user;
+          } catch {
+            // Backend might be offline
+          }
+        }
+        setCurrentUser(user);
+
+        if (user) {
+          const crList = await fetchClassrooms().catch(() => []);
+          setClassrooms(crList);
+          if (crList.length > 0) {
+            setActiveClassroomId(crList[0].id);
+          }
+        }
       } catch (err) {
-        console.error('Failed to load initial data:', err);
+        console.error('Failed to initialize app:', err);
       }
     };
 
-    loadInitialData();
+    initApp();
   }, []);
+
+  // Reload classroom resources when active classroom changes
+  useEffect(() => {
+    if (!activeClassroomId) return;
+    fetchDocuments(activeClassroomId)
+      .then(setDocuments)
+      .catch((err) => console.error('Failed to load classroom documents:', err));
+  }, [activeClassroomId]);
+
+  const activeClassroom = classrooms.find((c) => c.id === activeClassroomId) || classrooms[0] || null;
+
+  // Handle classroom creation
+  const handleCreateClassroom = async (name: string, subject: string, description?: string) => {
+    const newCr = await createClassroom(name, subject, description);
+    setClassrooms((prev) => [newCr, ...prev]);
+    setActiveClassroomId(newCr.id);
+  };
+
+  // Handle classroom join
+  const handleJoinClassroom = async (joinCode: string) => {
+    const joined = await joinClassroom(joinCode);
+    setClassrooms((prev) => {
+      const exists = prev.some((c) => c.id === joined.id);
+      return exists ? prev : [joined, ...prev];
+    });
+    setActiveClassroomId(joined.id);
+  };
 
   // Handle uploading documents
   const handleUpload = async (files: File[]) => {
     setIsUploading(true);
     try {
-      const newDocs = await uploadDocuments(files);
+      const newDocs = await uploadDocuments(files, activeClassroomId || undefined);
       setDocuments((prev) => {
         const ids = new Set(newDocs.map((d) => d.documentId));
         return [...newDocs, ...prev.filter((d) => !ids.has(d.documentId))];
@@ -72,9 +141,8 @@ export default function Home() {
     }
   };
 
-  // Handle sending chat message
+  // Handle sending private chat message
   const handleSendMessage = async (text: string, forceDirectAnswer = false) => {
-    // Optimistic student message
     const studentMessage: ChatMessage = {
       id: `temp_${Date.now()}`,
       role: 'student',
@@ -86,7 +154,7 @@ export default function Home() {
     setIsChatLoading(true);
 
     try {
-      const res = await sendChatMessage(text, conversationId, forceDirectAnswer);
+      const res = await sendChatMessage(text, conversationId, forceDirectAnswer, activeClassroomId || undefined);
       if (res.conversationId) {
         setConversationId(res.conversationId);
       }
@@ -95,7 +163,7 @@ export default function Home() {
       const errorMessage: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        text: `Error processing question: ${err.message || 'Please check that the backend server is running.'}`,
+        text: `Error processing question: ${err.message || 'Please verify backend server is running.'}`,
         routeLabel: 'unsupported',
         timestamp: new Date().toISOString(),
       };
@@ -105,43 +173,194 @@ export default function Home() {
     }
   };
 
-  // Find documentId for selected source citation
-  const selectedDocRecord = selectedSource
-    ? documents.find((d) => d.fileName === selectedSource.fileName)
-    : undefined;
+  // Auth callbacks
+  const handleAuthSuccess = async (user: User) => {
+    setCurrentUser(user);
+    const crList = await fetchClassrooms().catch(() => []);
+    setClassrooms(crList);
+    if (crList.length > 0) {
+      setActiveClassroomId(crList[0].id);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    setClassrooms([]);
+    setActiveClassroomId(null);
+  };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-950 text-slate-100">
-      <Header health={health} />
+    <div className="flex h-screen w-screen bg-[#0a0e1a] text-slate-100 overflow-hidden font-sans">
+      {/* 1. Leftmost Classroom Switcher Rail */}
+      <ClassroomSwitcher
+        classrooms={classrooms}
+        activeClassroomId={activeClassroomId}
+        onSelectClassroom={setActiveClassroomId}
+        onCreateClassroom={handleCreateClassroom}
+        onJoinClassroom={handleJoinClassroom}
+        currentUser={currentUser}
+        onOpenAuth={() => setShowAuthModal(true)}
+      />
 
-      <main className="flex-1 flex overflow-hidden">
-        {/* Module 1 & 6: Document Ingestion Panel */}
-        <DocumentPanel
-          documents={documents}
-          onUpload={handleUpload}
-          onDelete={handleDelete}
-          isLoading={isUploading}
+      {/* 2. Main Content Wrapper */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Top Header */}
+        <Header
+          health={health}
+          classroom={activeClassroom}
+          currentUser={currentUser}
+          onOpenAuth={() => setShowAuthModal(true)}
         />
 
-        {/* Module 4, 5 & 6: Chat & Socratic Tutoring Pane */}
-        <ChatPane
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onSelectSource={(source) => setSelectedSource(source)}
-          isLoading={isChatLoading}
-          hasDocuments={documents.length > 0}
-        />
+        {/* Classroom Secondary Nav Tabs */}
+        {activeClassroom && (
+          <nav
+            aria-label="Classroom Sections"
+            className="h-12 border-b border-[#1f293d] bg-[#0c1120] px-6 flex items-center justify-between shrink-0"
+          >
+            <div className="flex items-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('halls')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'halls'
+                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Discussion Halls</span>
+              </button>
 
-        {/* Module 6: Source Viewer Pane */}
-        {selectedSource && (
-          <SourceViewer
-            source={selectedSource}
-            documentId={selectedDocRecord?.documentId}
-            onClose={() => setSelectedSource(null)}
-          />
+              <button
+                type="button"
+                onClick={() => setActiveTab('assistant')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'assistant'
+                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5" />
+                <span>AI Teaching Assistant</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('resources')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'resources'
+                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                }`}
+              >
+                <Files className="w-3.5 h-3.5" />
+                <span>Course Resources</span>
+                <span className="text-[10px] bg-[#182035] px-1.5 py-0.2 rounded-full text-slate-300">
+                  {documents.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('members')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'members'
+                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Members &amp; Settings</span>
+              </button>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+              <span>Grounded in {activeClassroom.name}</span>
+            </div>
+          </nav>
         )}
-      </main>
+
+        {/* Tab View Container */}
+        <div className="flex-1 flex min-h-0 overflow-hidden relative">
+          {activeTab === 'halls' && activeClassroom && (
+            <DiscussionHall
+              classroom={activeClassroom}
+              currentUser={currentUser}
+              onSelectSource={setSelectedSource}
+            />
+          )}
+
+          {activeTab === 'assistant' && (
+            <div className="flex-1 flex h-full overflow-hidden">
+              <DocumentPanel
+                documents={documents}
+                onUpload={handleUpload}
+                onDelete={handleDelete}
+                isLoading={isUploading}
+              />
+              <ChatPane
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                onSelectSource={setSelectedSource}
+                isLoading={isChatLoading}
+                hasDocuments={documents.length > 0}
+              />
+            </div>
+          )}
+
+          {activeTab === 'resources' && (
+            <div className="flex-1 flex h-full overflow-hidden">
+              <DocumentPanel
+                documents={documents}
+                onUpload={handleUpload}
+                onDelete={handleDelete}
+                isLoading={isUploading}
+              />
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#0a0e1a]">
+                <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#FF5B22] mb-4 shadow-lg shadow-orange-500/10">
+                  <Files className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">Classroom Course Resources</h3>
+                <p className="text-xs text-slate-400 max-w-md leading-relaxed mb-6">
+                  PDF documents uploaded here are isolated to <span className="text-[#FF5B22] font-semibold">{activeClassroom?.name}</span>. Vectors are generated using Google text embeddings and cited page-by-page by the AI.
+                </p>
+                <div className="p-4 rounded-xl bg-[#121829] border border-[#232e48] text-xs text-slate-300 max-w-sm text-left space-y-1.5">
+                  <div className="font-semibold text-white">Ingestion Checklist:</div>
+                  <div>✓ Page-level text extraction with checksum duplicate avoidance</div>
+                  <div>✓ Recursive chunking with 600-char window and 100-char overlap</div>
+                  <div>✓ Vector embeddings mapped with classroomId filter</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'members' && activeClassroom && (
+            <ClassroomMembers classroom={activeClassroom} />
+          )}
+
+          {/* Slide-over Source Viewer */}
+          {selectedSource && (
+            <SourceViewer
+              source={selectedSource}
+              documentId={documents.find((d) => d.fileName === selectedSource.fileName)?.documentId}
+              onClose={() => setSelectedSource(null)}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Auth / Account Switcher Modal */}
+      {showAuthModal && (
+        <AuthModal
+          currentUser={currentUser}
+          onClose={() => setShowAuthModal(false)}
+          onAuthSuccess={handleAuthSuccess}
+          onLogout={handleLogout}
+        />
+      )}
     </div>
   );
 }
-

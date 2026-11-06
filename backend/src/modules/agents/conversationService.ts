@@ -39,7 +39,8 @@ class ConversationService {
   async processQuestion(
     question: string,
     conversationId?: string,
-    forceDirectAnswer = false
+    forceDirectAnswer = false,
+    classroomId?: string
   ): Promise<{
     conversationId: string;
     message: ChatMessage;
@@ -64,6 +65,7 @@ class ConversationService {
     const inputState = {
       question,
       conversationId: conversation.conversationId,
+      classroomId,
       history: [...conversation.messages],
       socraticTurnCount: conversation.socraticTurnCount,
       forceDirectAnswer,

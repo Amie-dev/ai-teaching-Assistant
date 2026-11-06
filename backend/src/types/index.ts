@@ -2,6 +2,7 @@ export type DocumentStatus = 'uploaded' | 'indexing' | 'ready' | 'failed';
 
 export interface DocumentRecord {
   documentId: string;
+  classroomId?: string;
   fileName: string;
   fileSize: number;
   uploadTime: string;
@@ -22,6 +23,7 @@ export interface PageRecord {
 export interface ChunkRecord {
   chunkId: string;
   documentId: string;
+  classroomId?: string;
   fileName: string;
   pageNumber: number;
   chunkIndex: number;
@@ -46,6 +48,7 @@ export interface ClassificationResult {
 export interface RetrievedChunk {
   chunkId: string;
   documentId: string;
+  classroomId?: string;
   fileName: string;
   pageNumber: number;
   chunkIndex: number;

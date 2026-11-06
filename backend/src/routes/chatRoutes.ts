@@ -10,7 +10,7 @@ const router = Router();
  */
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { question, conversationId, forceDirectAnswer } = req.body;
+    const { question, conversationId, forceDirectAnswer, classroomId } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       throw new AppError('Question field is required and must be a non-empty string.', 400);
@@ -19,7 +19,8 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const result = await conversationService.processQuestion(
       question.trim(),
       conversationId,
-      Boolean(forceDirectAnswer)
+      Boolean(forceDirectAnswer),
+      classroomId
     );
 
     res.json({

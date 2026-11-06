@@ -1,0 +1,153 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  avatar       String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  ownedClassrooms Classroom[]   @relation("ClassroomOwner")
+  memberships     Membership[]
+  messages        Message[]
+  assistantChats  AssistantChat[]
+}
+
+model Classroom {
+  id                String       @id @default(uuid())
+  name              String
+  subject           String
+  description       String?
+  joinCode          String       @unique
+  ownerId           String
+  status            String       @default("ACTIVE") // ACTIVE, ARCHIVED
+  aiEnabled         Boolean      @default(true)
+  socraticTurnLimit Int          @default(3)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  owner          User            @relation("ClassroomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships    Membership[]
+  resources      Resource[]
+  halls          Hall[]
+  assistantChats AssistantChat[]
+  queryLogs      QueryLog[]
+}
+
+model Membership {
+  id          String    @id @default(uuid())
+  userId      String
+  classroomId String
+  role        String    @default("STUDENT") // TEACHER, TA, STUDENT
+  mutedUntil  DateTime?
+  joinedAt    DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, classroomId])
+}
+
+model Resource {
+  id           String   @id @default(uuid())
+  classroomId  String
+  title        String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  pageCount    Int
+  checksum     String
+  unitTag      String?
+  state        String   @default("PUBLISHED") // DRAFT, PUBLISHED
+  indexStatus  String   @default("READY")     // UPLOADED, INDEXING, READY, FAILED
+  uploadedById String?
+  warnings     String?  // JSON string
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}
+
+model Hall {
+  id          String   @id @default(uuid())
+  classroomId String
+  name        String
+  description String?
+  topic       String?
+  type        String   @default("OPEN")   // OPEN, PRIVATE, ANNOUNCEMENT
+  status      String   @default("ACTIVE") // ACTIVE, LOCKED, ARCHIVED
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  messages  Message[]
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  hallId      String
+  senderId    String?
+  senderName  String
+  isAssistant Boolean  @default(false)
+  text        String
+  routeLabel  String?
+  sources     String?  // JSON array
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hall   Hall  @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  sender User? @relation(fields: [senderId], references: [id], onDelete: SetNull)
+}
+
+model AssistantChat {
+  id          String   @id @default(uuid())
+  userId      String
+  classroomId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom Classroom              @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  messages  AssistantChatMessage[]
+
+  @@unique([userId, classroomId])
+}
+
+model AssistantChatMessage {
+  id         String   @id @default(uuid())
+  chatId     String
+  role       String   // student, assistant
+  text       String
+  routeLabel String?
+  sources    String?  // JSON string
+  isGuiding  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  chat AssistantChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model QueryLog {
+  id          String   @id @default(uuid())
+  classroomId String
+  source      String   // private, hall
+  question    String
+  routeLabel  String
+  confidence  Float
+  topScore    Float
+  latencyMs   Int
+  helpful     Boolean?
+  createdAt   DateTime @default(now())
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+}

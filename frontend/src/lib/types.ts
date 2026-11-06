@@ -1,7 +1,67 @@
 export type DocumentStatus = 'uploaded' | 'indexing' | 'ready' | 'failed';
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  createdAt?: string;
+}
+
+export interface Classroom {
+  id: string;
+  name: string;
+  subject: string;
+  description?: string;
+  joinCode: string;
+  role: 'TEACHER' | 'TA' | 'STUDENT';
+  status: 'ACTIVE' | 'ARCHIVED';
+  aiEnabled: boolean;
+  socraticTurnLimit: number;
+  memberCount: number;
+  resourceCount?: number;
+  hallCount?: number;
+  createdAt: string;
+}
+
+export interface Hall {
+  id: string;
+  classroomId: string;
+  name: string;
+  description?: string;
+  topic?: string;
+  type: 'OPEN' | 'PRIVATE' | 'ANNOUNCEMENT';
+  status: 'ACTIVE' | 'LOCKED' | 'ARCHIVED';
+  messageCount?: number;
+  createdById?: string;
+  createdAt: string;
+}
+
+export interface HallMessage {
+  id: string;
+  hallId: string;
+  senderId?: string | null;
+  senderName: string;
+  isAssistant: boolean;
+  text: string;
+  routeLabel?: RouteLabel | null;
+  sources?: SourceCitation[];
+  pinned?: boolean;
+  createdAt: string;
+}
+
+export interface Member {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: 'TEACHER' | 'TA' | 'STUDENT';
+  joinedAt: string;
+}
+
 export interface DocumentRecord {
   documentId: string;
+  classroomId?: string;
   fileName: string;
   fileSize: number;
   uploadTime: string;
@@ -41,6 +101,7 @@ export interface PageDetails {
 
 export interface HealthStatus {
   status: string;
+  version?: string;
   timestamp: string;
   services: {
     chromaOnline: boolean;
@@ -49,4 +110,3 @@ export interface HealthStatus {
     hasGroqKey: boolean;
   };
 }
-

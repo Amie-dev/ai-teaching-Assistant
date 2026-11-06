@@ -16,6 +16,10 @@ import { logger } from '../../utils/logger.js';
 export const AgentStateAnnotation = Annotation.Root({
   question: Annotation<string>(),
   conversationId: Annotation<string>(),
+  classroomId: Annotation<string | undefined>({
+    reducer: (_current, next) => next,
+    default: () => undefined,
+  }),
   history: Annotation<ChatMessage[]>({
     reducer: (_current, next) => next,
     default: () => [],
@@ -68,8 +72,8 @@ export type AgentState = typeof AgentStateAnnotation.State;
  * Node 1: Retrieve course material chunks
  */
 async function retrieveNode(state: AgentState): Promise<Partial<AgentState>> {
-  logger.info(`[LangGraph] Step 1: Retrieving context for question: "${state.question}"`);
-  const result = await retrievalService.retrieveRelevantChunks(state.question);
+  logger.info(`[LangGraph] Step 1: Retrieving context for question: "${state.question}" (classroom: ${state.classroomId || 'all'})`);
+  const result = await retrievalService.retrieveRelevantChunks(state.question, undefined, undefined, state.classroomId);
   return {
     retrievedChunks: result.chunks,
     passedThreshold: result.passedThreshold,

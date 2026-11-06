@@ -14,14 +14,15 @@ export class RetrievalService {
   async retrieveRelevantChunks(
     question: string,
     topK: number = config.topK,
-    threshold: number = config.relevanceThreshold
+    threshold: number = config.relevanceThreshold,
+    classroomId?: string
   ): Promise<RetrievalResult> {
     try {
       // 1. Generate embedding for user question
       const queryEmbedding = await embeddingService.getQueryEmbedding(question);
 
-      // 2. Fetch top-K chunks from vector store
-      const allRetrieved = await chromaService.querySimilarity(queryEmbedding, topK);
+      // 2. Fetch top-K chunks from vector store (scoped to classroom if provided)
+      const allRetrieved = await chromaService.querySimilarity(queryEmbedding, topK, classroomId);
 
       if (allRetrieved.length === 0) {
         return {

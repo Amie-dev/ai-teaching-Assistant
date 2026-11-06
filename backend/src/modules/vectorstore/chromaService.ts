@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger.js';
 interface MemoryStoreItem {
   id: string;
   documentId: string;
+  classroomId?: string;
   fileName: string;
   pageNumber: number;
   chunkIndex: number;
@@ -92,7 +93,7 @@ class ChromaService {
   /**
    * Adds or updates chunk vectors in ChromaDB (or fallback store).
    */
-  async upsertChunks(chunks: ChunkRecord[], embeddings: number[][]): Promise<void> {
+  async upsertChunks(chunks: ChunkRecord[], embeddings: number[][], classroomId?: string): Promise<void> {
     if (chunks.length === 0) return;
 
     if (this.isConnectedToChroma && this.collection) {
@@ -101,6 +102,7 @@ class ChromaService {
         const documents = chunks.map(c => c.text);
         const metadatas = chunks.map(c => ({
           documentId: c.documentId,
+          classroomId: c.classroomId || classroomId || 'default',
           fileName: c.fileName,
           pageNumber: c.pageNumber,
           chunkIndex: c.chunkIndex,
@@ -127,6 +129,7 @@ class ChromaService {
       this.memoryChunks.set(c.chunkId, {
         id: c.chunkId,
         documentId: c.documentId,
+        classroomId: c.classroomId || classroomId,
         fileName: c.fileName,
         pageNumber: c.pageNumber,
         chunkIndex: c.chunkIndex,
@@ -166,14 +169,20 @@ class ChromaService {
    */
   async querySimilarity(
     queryEmbedding: number[],
-    topK: number = config.topK
+    topK: number = config.topK,
+    classroomId?: string
   ): Promise<RetrievedChunk[]> {
     if (this.isConnectedToChroma && this.collection) {
       try {
-        const results = await this.collection.query({
+        const queryParams: any = {
           queryEmbeddings: [queryEmbedding],
           nResults: topK,
-        });
+        };
+        if (classroomId) {
+          queryParams.where = { classroomId };
+        }
+
+        const results = await this.collection.query(queryParams);
 
         const retrieved: RetrievedChunk[] = [];
         const ids = results.ids[0] || [];
@@ -189,6 +198,7 @@ class ChromaService {
           retrieved.push({
             chunkId: ids[i],
             documentId: meta.documentId,
+            classroomId: meta.classroomId,
             fileName: meta.fileName,
             pageNumber: Number(meta.pageNumber),
             chunkIndex: Number(meta.chunkIndex),
@@ -205,13 +215,16 @@ class ChromaService {
     }
 
     // Fallback: cosine similarity against memory items
-    return this.queryMemoryStore(queryEmbedding, topK);
+    return this.queryMemoryStore(queryEmbedding, topK, classroomId);
   }
 
-  private queryMemoryStore(queryVector: number[], topK: number): RetrievedChunk[] {
+  private queryMemoryStore(queryVector: number[], topK: number, classroomId?: string): RetrievedChunk[] {
     const scored: Array<{ item: MemoryStoreItem; similarity: number }> = [];
 
     for (const item of this.memoryChunks.values()) {
+      if (classroomId && item.classroomId && item.classroomId !== classroomId) {
+        continue;
+      }
       const sim = this.cosineSimilarity(queryVector, item.embedding);
       scored.push({ item, similarity: sim });
     }
@@ -222,6 +235,7 @@ class ChromaService {
     return scored.slice(0, topK).map(({ item, similarity }) => ({
       chunkId: item.id,
       documentId: item.documentId,
+      classroomId: item.classroomId,
       fileName: item.fileName,
       pageNumber: item.pageNumber,
       chunkIndex: item.chunkIndex,
