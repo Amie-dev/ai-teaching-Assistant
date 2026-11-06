@@ -155,16 +155,36 @@ async function socraticTutorNode(state: AgentState): Promise<Partial<AgentState>
   };
 }
 
+import { prisma } from '../../db.js';
+
 /**
  * Node 5: Unsupported query response
  */
 async function unsupportedNode(state: AgentState): Promise<Partial<AgentState>> {
   logger.info(`[LangGraph] Question outside course material. Returning unsupported response.`);
-  const message =
+  
+  let message =
     `I could not find relevant information for this question in your uploaded course materials.\n\n` +
     `To get accurate grounded answers:\n` +
     `• Try rephrasing your question using terms from your course syllabus.\n` +
     `• Verify that the relevant chapter or lecture PDF is uploaded in the panel on the left.`;
+
+  if (state.classroomId) {
+    try {
+      const resourceCount = await prisma.resource.count({
+        where: { classroomId: state.classroomId },
+      });
+      if (resourceCount === 0) {
+        message =
+          `No course materials have been uploaded to this classroom yet.\n\n` +
+          `To enable the AI Teaching Assistant:\n` +
+          `• Switch to the **Resources** tab in the navigation above.\n` +
+          `• Upload your course syllabus, lecture slides, or textbook chapters as PDF.`;
+      }
+    } catch {
+      // Fallback to default message
+    }
+  }
 
   return {
     response: message,

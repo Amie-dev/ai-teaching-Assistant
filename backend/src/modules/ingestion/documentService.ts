@@ -215,6 +215,10 @@ class DocumentService {
     return true;
   }
 
+  async getPage(documentId: string, pageNumber: number): Promise<PageRecord | null> {
+    return this.getPageText(documentId, pageNumber);
+  }
+
   async getPageText(documentId: string, pageNumber: number): Promise<PageRecord | null> {
     let pages = this.documentPages.get(documentId);
 

@@ -107,14 +107,14 @@ class EmbeddingService {
   }
 
   /**
-   * Google text-embedding-004 batch embedding with retry
+   * Google Gemini embedding batch processing with intelligent rate limit backoff
    */
   private async getGoogleEmbeddings(
     google: GoogleGenerativeAI,
     texts: string[],
     taskType: TaskType,
-    batchSize = 50,
-    retries = 2
+    batchSize = 25,
+    retries = 6
   ): Promise<number[][]> {
     const model = google.getGenerativeModel({ model: config.googleEmbeddingModel });
     const allEmbeddings: number[][] = [];
@@ -123,7 +123,7 @@ class EmbeddingService {
       const batch = texts.slice(i, i + batchSize);
       let attempts = retries;
 
-      while (attempts >= 0) {
+      while (attempts > 0) {
         try {
           const res = await model.batchEmbedContents({
             requests: batch.map(t => ({
@@ -134,14 +134,26 @@ class EmbeddingService {
           allEmbeddings.push(...res.embeddings.map(e => e.values));
           break;
         } catch (err: any) {
-          if (attempts > 0 && (err.status === 429 || err.message?.includes('429'))) {
-            logger.warn(`Google rate limit. Retrying in 1500ms...`);
-            await new Promise(r => setTimeout(r, 1500));
-            attempts--;
+          const errMsg = err.message || '';
+          const isRateLimit = err.status === 429 || errMsg.includes('429') || errMsg.includes('Quota exceeded');
+          attempts--;
+
+          if (attempts > 0 && isRateLimit) {
+            // Extract Google's exact retry recommendation if provided
+            const match = errMsg.match(/retry in ([0-9.]+)s/i) || errMsg.match(/retryDelay\":\s*\"([0-9]+)s/i);
+            const waitSeconds = match ? Math.ceil(parseFloat(match[1])) + 2 : 12;
+            logger.warn(`[Google Embedding] Rate limited (429). Waiting ${waitSeconds}s before retrying batch ${i}...`);
+            await new Promise(r => setTimeout(r, waitSeconds * 1000));
           } else {
+            logger.error(`[Google Embedding] Batch ${i} failed permanently: ${errMsg}`);
             throw err;
           }
         }
+      }
+
+      // Friendly interval between batches to respect free tier RPM
+      if (i + batchSize < texts.length) {
+        await new Promise(r => setTimeout(r, 800));
       }
     }
 
