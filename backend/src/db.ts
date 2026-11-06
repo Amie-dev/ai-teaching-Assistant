@@ -12,3 +12,4 @@ prisma.$connect()
   .catch((err) => {
     logger.error('Failed to connect to PostgreSQL database:', err);
   });
+

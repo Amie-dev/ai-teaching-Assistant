@@ -1,17 +1,31 @@
-# AI Teaching Assistant – An Agentic RAG System for Socratic Tutoring
+# AI Teaching Assistant (v2) – Classrooms, Discussion Halls & Agentic RAG
 
 **B.Tech CSE Semester 7 Project**  
 **Guide:** Ms. Ria Pyne  
 **Team Members:** Aminul Islam, Ayan Mahapatra, Md Yusuf, Soniya Samanta, Soubhik Das  
 
+> 📖 **Looking for the complete running guide?** See **[INSTRUCTIONS.md](file:///run/media/aminul/01DD2E93317DEF70/B.Tech%20CSE%20Notes%20(BRAINWARE%20UNIVERSITY)/Semister%207/project/INSTRUCTIONS.md)** for a step-by-step setup walkthrough, pre-seeded demo credentials, and feature guide.
+
 ---
 
 ## 🚀 Overview
 
-The **AI Teaching Assistant** is a pedagogical agentic RAG system that answers students' academic questions grounded exclusively in their uploaded course PDFs. It dynamically switches teaching styles based on question classification:
-- **Direct Answer Agent (Factual queries):** Delivers direct, concise answers with source file and page citations for definitions, formulas, dates, and lookups.
-- **Socratic Tutor Agent (Conceptual queries):** Guides students with targeted questions and hints referencing relevant course pages to encourage self-directed reasoning before revealing full answers.
-- **Refusal / Fallback:** Automatically refuses or flags out-of-scope questions when course notes do not support the answer (preventing hallucination).
+The **AI Teaching Assistant v2** is a multi-classroom web platform where instructors create course workspaces, upload syllabus PDFs, and invite students via 6-character join codes. The system features:
+
+1. **Course-Grounded Agentic RAG:**
+   - **Direct Answer Agent:** For factual definitions, formulas, and lookups with exact file and page citations.
+   - **Socratic Tutor Agent:** Guides students through conceptual reasoning with progressive hints and page references before revealing answers.
+   - **"Just Give Me the Answer" Override:** Allows students to skip interactive guidance whenever needed.
+   - **Classroom Isolation:** Vectors and resources are strictly partitioned per classroom to prevent cross-course leaks.
+2. **Real-Time Discussion Halls (Socket.IO):**
+   - Live multi-user channels (`#general`, `#doubts`, `#announcements`).
+   - Summon AI directly in discussion halls by typing `@assistant <question>`. The AI responds live for all students with citations.
+   - Live online presence indicators and instructor channel lock tools.
+3. **Agorapulse-Inspired UI:**
+   - Modern B2B SaaS theme with Deep Obsidian Navy (`#0A0E1A`), Energetic Coral (`#FF5B22`), and slide-over textbook page viewers.
+4. **PostgreSQL & ChromaDB in Docker:**
+   - PostgreSQL 16 container managing relational users, classrooms, memberships, halls, and messages.
+   - ChromaDB container managing isolated dense vector embeddings.
 
 ---
 
@@ -19,128 +33,84 @@ The **AI Teaching Assistant** is a pedagogical agentic RAG system that answers s
 
 ```mermaid
 flowchart LR
-  subgraph Ingestion Pipeline
-    A[Course PDF Upload<br/>React / Next.js] --> B[Extract Text Page-by-Page<br/>pdf-parse & Metadata]
-    B --> C[Overlapping Chunking<br/>Splitter + Source Tags]
-    C --> D[Vector Embedding<br/>OpenAI text-embedding-3]
-    D --> E[(ChromaDB / Vector Store<br/>Vectors + Metadata)]
+  subgraph Client
+    UI[Next.js + Tailwind CSS<br/>Classrooms, Discussion Halls, AI Tutor, Resources]
   end
 
-  subgraph Query & Agentic Pipeline
-    Q[Student Question] --> R[Vector Retrieval<br/>Cosine Similarity]
-    R --> T{Relevance Threshold<br/>Passed?}
-    T -->|No| UN[Refusal Response<br/>Course Not Covered]
-    T -->|Yes| CL[Llama 3.1 via Groq<br/>Question Classifier]
-    CL --> LG[LangGraph Orchestrator]
-    LG -->|factual| DA[Direct Answer Agent]
-    LG -->|conceptual| ST[Socratic Tutor Agent]
-    DA --> ANS[Answer + Source Chips]
-    ST --> ANS
-    UN --> ANS
+  subgraph Backend Services
+    API[Express.js REST APIs<br/>Auth, Classrooms, Resources]
+    RT[Socket.IO Gateway<br/>Real-Time Halls & @assistant]
+    LG[LangGraph.js Router<br/>Direct Answer vs Socratic Tutor]
   end
+
+  subgraph Docker Containers
+    PG[(PostgreSQL 16 Container<br/>Users, Classrooms, Halls, Messages)]
+    CH[(ChromaDB Container<br/>Classroom-Isolated Vectors)]
+  end
+
+  subgraph AI Models
+    GEM[Google Gemini Embeddings<br/>gemini-embedding-2 Default]
+    GROQ[Llama 3.1 via Groq<br/>Structured Classifier & Generator]
+  end
+
+  UI --> API
+  UI <--> RT
+  API --> PG
+  API --> LG
+  RT --> PG
+  RT -->|@assistant| LG
+  LG --> CH
+  LG --> GEM
+  LG --> GROQ
 ```
 
 ---
 
-## 📦 Project Structure
+## ⚡ Quickstart
 
-```
-.
-├── backend/
-│   ├── src/
-│   │   ├── config.ts                    # Central configuration (chunking, threshold, models)
-│   │   ├── app.ts                       # Express application setup & CORS
-│   │   ├── server.ts                    # Server initialization
-│   │   ├── modules/
-│   │   │   ├── ingestion/               # Module 1: PDF ingestion & page extraction
-│   │   │   ├── chunking/                # Module 2: Overlapping text splitter & embeddings
-│   │   │   ├── vectorstore/             # Module 3: ChromaDB client & similarity retrieval
-│   │   │   ├── classifier/              # Module 4: Groq Llama 3.1 question classifier
-│   │   │   └── agents/                  # Module 5: LangGraph workflow, Direct & Socratic agents
-│   │   └── routes/                      # API routes (/api/documents, /api/chat)
-│   ├── tests/                           # Vitest automated test suite (Modules 1-5)
-│   ├── .env.example
-│   └── package.json
-├── frontend/                            # Module 6: Next.js + React + Tailwind CSS
-│   ├── src/
-│   │   ├── app/                         # App router (layout, globals.css, page.tsx)
-│   │   ├── components/                  # UI components (ChatPane, DocumentPanel, SourceViewer, ModeBadge)
-│   │   └── lib/                         # API client & TypeScript interfaces
-│   └── package.json
-├── docker-compose.yml                   # ChromaDB vector database container service
-└── package.json                         # Root project scripts
-```
-
----
-
-## ⚙️ Quickstart
-
-### 1. Configure Environment Variables
-
-Copy `.env.example` in `backend/`:
-```bash
-cp backend/.env.example backend/.env
-```
-
-Configure your API keys in `backend/.env`:
-```env
-OPENAI_API_KEY=sk-...
-GROQ_API_KEY=gsk-...
-CHROMA_URL=http://localhost:8001
-RELEVANCE_THRESHOLD=0.15
-```
-
-> **Note:** The backend contains built-in local vector fallback and linguistic heuristic classifiers, allowing full offline testing even without external API keys or Docker running.
-
-### 2. Optional: Start ChromaDB with Docker
-
+### 1. Start Docker Containers (PostgreSQL & ChromaDB)
 ```bash
 docker compose up -d
 ```
-*(Runs persistent ChromaDB on port 8001)*
 
-### 3. Run Backend & Frontend
-
-In two terminal tabs (or using root scripts):
-
-**Backend:**
+### 2. Configure Backend
 ```bash
-npm run dev:backend
-# Server runs on http://localhost:5000
+cp backend/.env.example backend/.env
+# Verify GOOGLE_API_KEY and GROQ_API_KEY in backend/.env
+cd backend
+npm install
+npx prisma db push
+npm run dev
 ```
 
-**Frontend:**
+### 3. Start Frontend
 ```bash
-npm run dev:frontend
-# App runs on http://localhost:3000
+cd frontend
+npm install
+npm run dev
 ```
+Open **`http://localhost:3000`** in your browser.
 
 ---
 
-## 🧪 Automated Test Suite
+## 🔑 Demo Accounts
 
-Run the comprehensive unit and integration test suite:
-```bash
-npm test
-```
+| Role | Email | Password | Pre-enrolled Classroom |
+|---|---|---|---|
+| **Teacher (Owner)** | `teacher@brainware.edu` | `teacher123` | Operating Systems (Code: `CSE701`) |
+| **Student** | `student@brainware.edu` | `student123` | Operating Systems (Code: `CSE701`) |
 
-Verifies:
-- **Module 2:** Overlapping text chunking & metadata preservation.
-- **Module 3:** Vector similarity search & relevance threshold filtering.
-- **Module 4:** Question classification (factual vs conceptual).
-- **Module 5:** LangGraph StateGraph agent routing, Socratic guidance, direct answer override, and out-of-scope refusal.
+*(Use the 1-click Quick Demo Switcher in the top-right header to switch roles instantly)*
 
 ---
 
-## 📡 API Reference
+## 🧪 Automated Tests
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Healthcheck and services status |
-| `POST` | `/api/documents` | Upload and index course PDFs (`multipart/form-data`) |
-| `GET` | `/api/documents` | List uploaded course documents |
-| `DELETE` | `/api/documents/:id` | Delete document and vector embeddings |
-| `GET` | `/api/documents/:id/pages/:n` | Fetch page text for the interactive Source Viewer |
-| `POST` | `/api/chat` | Send question (`question`, `conversationId`, `forceDirectAnswer`) |
-| `GET` | `/api/chat/logs` | Retrieve query latency and classification evaluation logs |
-
+Run the Vitest test suite:
+```bash
+cd backend && npm test
+```
+- Chunking & page metadata preservation
+- Vector similarity retrieval & relevance filtering
+- Question classification (Groq structured JSON output)
+- LangGraph agentic routing & out-of-scope refusals

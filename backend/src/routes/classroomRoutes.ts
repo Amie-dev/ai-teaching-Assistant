@@ -415,3 +415,4 @@ classroomRouter.patch('/halls/:hid', requireAuth, async (req: AuthRequest, res: 
     res.status(500).json({ error: 'Failed to update hall' });
   }
 });
+

@@ -55,3 +55,4 @@ export function signToken(user: { id: string; email: string; name: string }): st
     { expiresIn: '7d' }
   );
 }
+

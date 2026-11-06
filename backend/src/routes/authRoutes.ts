@@ -128,3 +128,4 @@ authRouter.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to load user profile.' });
   }
 });
+

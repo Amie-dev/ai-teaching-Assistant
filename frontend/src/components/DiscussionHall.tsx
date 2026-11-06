@@ -475,3 +475,4 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
     </div>
   );
 };
+

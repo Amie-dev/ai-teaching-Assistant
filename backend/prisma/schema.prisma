@@ -151,3 +151,4 @@ model QueryLog {
 
   classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
 }
+

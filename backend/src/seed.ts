@@ -128,3 +128,4 @@ export async function seedDatabase() {
     logger.error('Error during database seeding:', err);
   }
 }
+
