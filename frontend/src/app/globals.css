@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0e1a;
+  --background: #080c16;
   --foreground: #f8fafc;
   --brand-coral: #ff5b22;
   --brand-coral-hover: #ea4e17;
-  --brand-navy-deep: #0a0e1a;
-  --brand-navy-card: #121829;
-  --brand-navy-surface: #182035;
-  --brand-navy-border: #232e48;
+  --brand-navy-deep: #080c16;
+  --brand-navy-card: #0e1424;
+  --brand-navy-surface: #141c30;
+  --brand-navy-border: #1e293b;
 }
 
 html {
@@ -19,6 +19,11 @@ html {
 
 body {
   background-color: var(--background);
+  background-image: 
+    radial-gradient(at 10% 0%, rgba(255, 91, 34, 0.08) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(16, 185, 129, 0.04) 0px, transparent 50%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   margin: 0;
@@ -28,18 +33,42 @@ body {
 
 /* Agorapulse Sleek Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0e1a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #232e48;
+  background: #1e293b;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #ff5b22;
+}
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: rgba(14, 20, 36, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-card {
+  background: rgba(20, 28, 48, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Glow effects */
+.glow-coral {
+  box-shadow: 0 0 25px -4px rgba(255, 91, 34, 0.35);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.3);
 }
 
 /* Smooth transitions & accessible reduced motion */

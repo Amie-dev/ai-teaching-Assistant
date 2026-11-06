@@ -215,16 +215,16 @@ export default function Home() {
         {activeClassroom && (
           <nav
             aria-label="Classroom Sections"
-            className="h-12 border-b border-[#1f293d] bg-[#0c1120] px-6 flex items-center justify-between shrink-0"
+            className="h-13 border-b border-white/[0.08] bg-[#0a0f1d]/90 backdrop-blur-md px-5 sm:px-6 flex items-center justify-between shrink-0 shadow-xs"
           >
             <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('halls')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'halls'
-                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                    ? 'bg-gradient-to-r from-[#FF5B22] to-[#FF7442] text-white shadow-md shadow-orange-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -234,28 +234,30 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setActiveTab('assistant')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'assistant'
-                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                    ? 'bg-gradient-to-r from-[#FF5B22] to-[#FF7442] text-white shadow-md shadow-orange-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <Bot className="w-3.5 h-3.5" />
-                <span>AI Teaching Assistant</span>
+                <span>Socratic AI Assistant</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('resources')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'resources'
-                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                    ? 'bg-gradient-to-r from-[#FF5B22] to-[#FF7442] text-white shadow-md shadow-orange-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <Files className="w-3.5 h-3.5" />
                 <span>Course Resources</span>
-                <span className="text-[10px] bg-[#182035] px-1.5 py-0.2 rounded-full text-slate-300">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  activeTab === 'resources' ? 'bg-black/30 text-white' : 'bg-[#141c30] text-slate-300'
+                }`}>
                   {documents.length}
                 </span>
               </button>
@@ -263,10 +265,10 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setActiveTab('members')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'members'
-                    ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-[#182035]'
+                    ? 'bg-gradient-to-r from-[#FF5B22] to-[#FF7442] text-white shadow-md shadow-orange-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -274,9 +276,13 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-              <span>Grounded in {activeClassroom.name}</span>
+            <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#101728] border border-white/[0.06]">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <span className="text-[11px] font-medium text-slate-300">
+                  Grounded: <strong className="text-white font-bold">{activeClassroom.name}</strong>
+                </span>
+              </div>
             </div>
           </nav>
         )}

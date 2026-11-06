@@ -1,7 +1,17 @@
 'use client';
 
-import React from 'react';
-import { GraduationCap, Database, Cpu, Sparkles, KeyRound, Shield, Check, Copy } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  GraduationCap,
+  Database,
+  KeyRound,
+  Shield,
+  User,
+  Check,
+  Copy,
+  Sparkles,
+  BookOpen,
+} from 'lucide-react';
 import { Classroom, HealthStatus } from '../lib/types';
 import { UserRole } from '../lib/api';
 
@@ -18,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeRole,
   onRoleChange,
 }) => {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleCopyCode = async (code: string) => {
     try {
@@ -29,68 +39,83 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-16 border-b border-[#1f293d] bg-[#0a0e1a]/95 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
-      <div className="flex items-center gap-3">
-        {/* Agorapulse-style vibrant coral/orange badge icon */}
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF5B22] to-[#FF844B] flex items-center justify-center shadow-lg shadow-orange-500/25 ring-1 ring-white/10 shrink-0">
-          <GraduationCap className="w-5 h-5 text-white" />
+    <header className="h-16 border-b border-white/[0.08] bg-[#080c16]/90 backdrop-blur-xl px-5 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm shadow-black/40">
+      {/* Left: Branding & Active Classroom */}
+      <div className="flex items-center gap-3.5">
+        <div className="relative group">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF5B22] via-[#FF6D38] to-[#FFA07A] flex items-center justify-center text-white shadow-lg shadow-orange-500/25 ring-1 ring-white/20 transition-transform group-hover:scale-105 shrink-0">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#080c16]" />
         </div>
+
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm sm:text-base font-bold text-white tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
               {classroom ? classroom.name : 'AI Teaching Assistant'}
             </h1>
-            <span
-              className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border ${
-                activeRole === 'TEACHER'
-                  ? 'bg-orange-500/10 text-[#FF5B22] border-orange-500/25'
-                  : 'bg-sky-500/10 text-sky-400 border-sky-500/25'
-              }`}
-            >
-              Active Role: {activeRole}
-            </span>
+
+            {classroom && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#141c30] text-slate-300 border border-white/[0.08]">
+                <BookOpen className="w-2.5 h-2.5 text-[#FF5B22]" />
+                {classroom.subject}
+              </span>
+            )}
           </div>
-          <p className="text-xs text-slate-400">
-            {classroom
-              ? `${classroom.subject}`
-              : 'Socratic Tutoring & Course-Grounded Retrieval · B.Tech CSE (Sem 7)'}
+
+          <p className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B22]" />
+            <span>Socratic Tutoring &amp; RAG Grounding</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">B.Tech CSE Sem 7</span>
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs">
+      {/* Right Controls: Join Code, Health & Segmented Role Toggle */}
+      <div className="flex items-center gap-2.5 sm:gap-3 text-xs">
         {/* Classroom Join Code Pill */}
         {classroom && (
           <button
             type="button"
             onClick={() => handleCopyCode(classroom.joinCode)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#121829] hover:bg-[#182035] border border-[#232e48] text-slate-300 transition-colors cursor-pointer"
-            title="Click to copy join code"
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#121829] hover:bg-[#1a233b] border border-white/[0.08] hover:border-[#FF5B22]/40 text-slate-200 transition-all cursor-pointer group shadow-xs"
+            title="Click to copy join code to clipboard"
           >
-            <KeyRound className="w-3.5 h-3.5 text-[#FF5B22]" />
-            <span className="font-mono font-bold text-[#FF5B22]">{classroom.joinCode}</span>
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-500" />}
+            <KeyRound className="w-3.5 h-3.5 text-[#FF5B22] group-hover:rotate-12 transition-transform" />
+            <span className="text-[11px] font-medium text-slate-400">Code:</span>
+            <span className="font-mono font-extrabold text-[#FF5B22] tracking-wider">{classroom.joinCode}</span>
+            {copied ? (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                <Check className="w-3 h-3" /> Copied
+              </span>
+            ) : (
+              <Copy className="w-3 h-3 text-slate-500 group-hover:text-slate-300 transition-colors" />
+            )}
           </button>
         )}
 
-        {/* Database & Chroma Health Chips */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#121829] border border-[#232e48] text-slate-300 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+        {/* Database & Vector Store Health Badge */}
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#121829] border border-white/[0.08] text-slate-300 shadow-xs">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
           <Database className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-medium text-slate-200">PostgreSQL + ChromaDB</span>
+          <span className="text-[11px] font-semibold text-slate-300">Docker RAG Ready</span>
         </div>
 
-        {/* Direct UI Role Switcher: Teacher vs Student */}
-        <div className="flex items-center p-1 rounded-xl bg-[#121829] border border-[#232e48]">
+        {/* Segmented Zero-Friction Role Switcher (Teacher vs Student) */}
+        <div className="flex items-center p-1 rounded-xl bg-[#101728] border border-white/[0.08] shadow-inner">
           <button
             type="button"
             onClick={() => onRoleChange('TEACHER')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeRole === 'TEACHER'
-                ? 'bg-[#FF5B22] text-white shadow-md shadow-orange-500/25'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-[#FF5B22] to-[#FF7442] text-white shadow-md shadow-orange-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
             }`}
-            title="Teacher: Can create/delete classrooms, upload/delete resources, lock halls"
+            title="Teacher Mode: Full control to create classrooms, delete classrooms, manage PDFs, and lock halls"
           >
             <Shield className="w-3.5 h-3.5" />
             <span>Teacher</span>
@@ -101,12 +126,12 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onRoleChange('STUDENT')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeRole === 'STUDENT'
-                ? 'bg-sky-600 text-white shadow-md shadow-sky-500/25'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.03]'
             }`}
-            title="Student: Can join classrooms, create discussion halls, chat with AI"
+            title="Student Mode: Join classrooms, create discussion halls, chat, and summon Socratic AI"
           >
-            <GraduationCap className="w-3.5 h-3.5" />
+            <User className="w-3.5 h-3.5" />
             <span>Student</span>
           </button>
         </div>
