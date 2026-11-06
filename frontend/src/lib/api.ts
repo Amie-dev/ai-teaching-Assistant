@@ -2,17 +2,43 @@ import { ChatMessage, DocumentRecord, HealthStatus, PageDetails, RouteLabel } fr
 
 const API_BASE = '/api';
 
+async function safeParseJson<T>(res: Response, defaultErrorMsg: string): Promise<T> {
+  const text = await res.text();
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Backend Error (${res.status}): ${text || defaultErrorMsg}. Please verify backend is running on port 5000.`);
+    }
+    throw new Error(`Invalid response format: ${text.slice(0, 80)}`);
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error?.message || data?.message || defaultErrorMsg);
+  }
+
+  return data as T;
+}
+
 export async function fetchHealth(): Promise<HealthStatus> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error('Failed to fetch system status');
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/health`);
+    return await safeParseJson<HealthStatus>(res, 'Failed to fetch system status');
+  } catch (err: any) {
+    throw new Error(err.message || 'Cannot reach backend server');
+  }
 }
 
 export async function fetchDocuments(): Promise<DocumentRecord[]> {
-  const res = await fetch(`${API_BASE}/documents`);
-  if (!res.ok) throw new Error('Failed to fetch documents');
-  const data = await res.json();
-  return data.documents || [];
+  try {
+    const res = await fetch(`${API_BASE}/documents`);
+    const data = await safeParseJson<{ documents: DocumentRecord[] }>(res, 'Failed to fetch documents');
+    return data.documents || [];
+  } catch (err: any) {
+    throw new Error(err.message || 'Cannot reach backend documents API');
+  }
 }
 
 export async function uploadDocuments(files: File[]): Promise<DocumentRecord[]> {
@@ -26,11 +52,7 @@ export async function uploadDocuments(files: File[]): Promise<DocumentRecord[]> 
     body: formData,
   });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error?.message || 'Failed to upload documents');
-  }
-
+  const data = await safeParseJson<{ documents: DocumentRecord[] }>(res, 'Failed to upload documents');
   return data.documents || [];
 }
 
@@ -38,19 +60,12 @@ export async function deleteDocument(documentId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/documents/${documentId}`, {
     method: 'DELETE',
   });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error?.message || 'Failed to delete document');
-  }
+  await safeParseJson<{ success: boolean }>(res, 'Failed to delete document');
 }
 
 export async function fetchDocumentPage(documentId: string, pageNumber: number): Promise<PageDetails> {
   const res = await fetch(`${API_BASE}/documents/${documentId}/pages/${pageNumber}`);
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error?.message || 'Failed to fetch page text');
-  }
-  return res.json();
+  return await safeParseJson<PageDetails>(res, `Failed to fetch page ${pageNumber}`);
 }
 
 export interface ChatResponse {
@@ -78,10 +93,5 @@ export async function sendChatMessage(
     }),
   });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error?.message || 'Failed to send chat message');
-  }
-
-  return data;
+  return await safeParseJson<ChatResponse>(res, 'Failed to process chat message');
 }

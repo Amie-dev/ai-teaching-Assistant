@@ -15,7 +15,7 @@ export const config = {
   embeddingModel: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
   
   groqApiKey: process.env.GROQ_API_KEY || '',
-  groqModel: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+  groqModel: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
   
   // Chroma settings
   chromaUrl: process.env.CHROMA_URL || 'http://localhost:8001',
