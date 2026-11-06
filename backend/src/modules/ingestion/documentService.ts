@@ -73,17 +73,20 @@ class DocumentService {
    * 5. Syncs to PostgreSQL resources.
    */
   async processUploadedFile(file: Express.Multer.File, classroomId?: string): Promise<DocumentRecord> {
+    if (!classroomId) {
+      throw new Error('A valid classroomId is required to upload course materials.');
+    }
     const buffer = file.buffer;
     const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
 
-    // Check duplicate (FR-1.5, RES-8)
+    // Check duplicate (FR-1.5, RES-8) strictly within this classroom
     for (const doc of this.documents.values()) {
       if (
         doc.checksum === checksum &&
         doc.status === 'ready' &&
-        (!classroomId || doc.classroomId === classroomId)
+        doc.classroomId === classroomId
       ) {
-        logger.info(`Duplicate file detected: "${file.originalname}" matches existing document ID ${doc.documentId}. Skipping re-indexing.`);
+        logger.info(`Duplicate file detected in classroom ${classroomId}: "${file.originalname}" matches existing document ID ${doc.documentId}.`);
         return doc;
       }
     }
@@ -178,7 +181,7 @@ class DocumentService {
   getDocuments(classroomId?: string): DocumentRecord[] {
     const list = Array.from(this.documents.values());
     const filtered = classroomId
-      ? list.filter((d) => d.classroomId === classroomId || !d.classroomId)
+      ? list.filter((d) => d.classroomId === classroomId)
       : list;
 
     return filtered.sort(

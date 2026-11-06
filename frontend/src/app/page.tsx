@@ -74,11 +74,20 @@ export default function Home() {
     loadClassrooms();
   }, []);
 
-  // Reload classroom resources when active classroom changes
+  // Reload classroom resources and enforce strict classroom isolation
   useEffect(() => {
     if (!activeClassroomId) return;
+    setDocuments([]);             // Clear document list for the new classroom
+    setMessages([]);              // Clear private chat messages to prevent cross-classroom leaks
+    setConversationId(undefined); // Reset conversation session ID
+    setSelectedSource(null);      // Dismiss any open source drawer
+
     fetchDocuments(activeClassroomId)
-      .then(setDocuments)
+      .then((docs) => {
+        // Enforce client-side check that all docs match active classroom
+        const scoped = docs.filter((d) => d.classroomId === activeClassroomId);
+        setDocuments(scoped);
+      })
       .catch((err) => console.error('Failed to load classroom documents:', err));
   }, [activeClassroomId]);
 
@@ -118,14 +127,18 @@ export default function Home() {
     setActiveClassroomId(joined.id);
   };
 
-  // Handle uploading documents (Teacher)
+  // Handle uploading documents (Teacher) strictly to active classroom
   const handleUpload = async (files: File[]) => {
+    if (!activeClassroomId) return;
     setIsUploading(true);
     try {
-      const newDocs = await uploadDocuments(files, activeClassroomId || undefined);
+      const newDocs = await uploadDocuments(files, activeClassroomId);
       setDocuments((prev) => {
         const ids = new Set(newDocs.map((d) => d.documentId));
-        return [...newDocs, ...prev.filter((d) => !ids.has(d.documentId))];
+        return [
+          ...newDocs.filter((d) => d.classroomId === activeClassroomId),
+          ...prev.filter((d) => !ids.has(d.documentId) && d.classroomId === activeClassroomId),
+        ];
       });
     } finally {
       setIsUploading(false);

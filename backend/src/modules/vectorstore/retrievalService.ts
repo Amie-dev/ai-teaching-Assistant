@@ -18,10 +18,20 @@ export class RetrievalService {
     classroomId?: string
   ): Promise<RetrievalResult> {
     try {
+      // Enforce strict classroom isolation (PRD Isolation: Answers citing another classroom = 0)
+      if (!classroomId) {
+        logger.warn(`Retrieval rejected for "${question}": classroomId is required for classroom vector isolation.`);
+        return {
+          chunks: [],
+          passedThreshold: false,
+          topScore: 0,
+        };
+      }
+
       // 1. Generate embedding for user question
       const queryEmbedding = await embeddingService.getQueryEmbedding(question);
 
-      // 2. Fetch top-K chunks from vector store (scoped to classroom if provided)
+      // 2. Fetch top-K chunks from vector store strictly scoped to this classroom
       const allRetrieved = await chromaService.querySimilarity(queryEmbedding, topK, classroomId);
 
       if (allRetrieved.length === 0) {

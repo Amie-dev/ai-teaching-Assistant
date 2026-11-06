@@ -69,6 +69,7 @@ export interface ChatMessage {
 
 export interface ConversationRecord {
   conversationId: string;
+  classroomId?: string;
   createdAt: string;
   updatedAt: string;
   messages: ChatMessage[];

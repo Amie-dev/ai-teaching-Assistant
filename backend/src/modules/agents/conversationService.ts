@@ -11,19 +11,37 @@ import { agenticGraph } from './langgraphWorkflow.js';
 class ConversationService {
   private conversations: Map<string, ConversationRecord> = new Map();
 
-  getOrCreateConversation(conversationId?: string): ConversationRecord {
+  getOrCreateConversation(conversationId?: string, classroomId?: string): ConversationRecord {
     const id = conversationId && conversationId.trim().length > 0 ? conversationId : uuidv4();
     let conversation = this.conversations.get(id);
+
+    // Strict classroom isolation: if conversation belongs to another classroom, isolate it
+    if (conversation && classroomId && conversation.classroomId && conversation.classroomId !== classroomId) {
+      const freshId = uuidv4();
+      conversation = {
+        conversationId: freshId,
+        classroomId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+        socraticTurnCount: 0,
+      };
+      this.conversations.set(freshId, conversation);
+      return conversation;
+    }
 
     if (!conversation) {
       conversation = {
         conversationId: id,
+        classroomId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: [],
         socraticTurnCount: 0,
       };
       this.conversations.set(id, conversation);
+    } else if (classroomId && !conversation.classroomId) {
+      conversation.classroomId = classroomId;
     }
 
     return conversation;
@@ -50,7 +68,7 @@ class ConversationService {
     socraticTurnCount: number;
   }> {
     const startTime = Date.now();
-    const conversation = this.getOrCreateConversation(conversationId);
+    const conversation = this.getOrCreateConversation(conversationId, classroomId);
 
     // Append student message
     const studentMessage: ChatMessage = {

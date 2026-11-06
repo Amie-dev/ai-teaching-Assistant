@@ -53,13 +53,18 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const isTeacherOrTa = classroom.role === 'TEACHER' || classroom.role === 'TA';
 
-  // Load halls
+  // Load halls and strictly isolate discussions to the active classroom
   useEffect(() => {
+    let isCurrent = true;
+    setMessages([]);     // Clear previous messages immediately
+    setActiveHall(null); // Reset active hall so old classroom's hall does not linger
+
     const loadHalls = async () => {
       try {
         const data = await fetchHalls(classroom.id);
+        if (!isCurrent) return;
         setHalls(data);
-        if (data.length > 0 && !activeHall) {
+        if (data.length > 0) {
           setActiveHall(data[0]);
         }
       } catch (err) {
@@ -67,6 +72,10 @@ export const DiscussionHall: React.FC<DiscussionHallProps> = ({
       }
     };
     loadHalls();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [classroom.id]);
 
   // Handle Socket.IO connection and active hall changes

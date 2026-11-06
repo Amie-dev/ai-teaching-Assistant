@@ -178,9 +178,10 @@ class ChromaService {
           queryEmbeddings: [queryEmbedding],
           nResults: topK,
         };
-        if (classroomId) {
-          queryParams.where = { classroomId };
+        if (!classroomId) {
+          return [];
         }
+        queryParams.where = { classroomId: { $eq: classroomId } };
 
         const results = await this.collection.query(queryParams);
 
@@ -222,7 +223,7 @@ class ChromaService {
     const scored: Array<{ item: MemoryStoreItem; similarity: number }> = [];
 
     for (const item of this.memoryChunks.values()) {
-      if (classroomId && item.classroomId && item.classroomId !== classroomId) {
+      if (!classroomId || item.classroomId !== classroomId) {
         continue;
       }
       const sim = this.cosineSimilarity(queryVector, item.embedding);

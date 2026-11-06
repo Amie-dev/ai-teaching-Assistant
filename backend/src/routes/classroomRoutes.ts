@@ -128,6 +128,14 @@ classroomRouter.delete('/:id', requireAuth, async (req: AuthRequest, res: Respon
     const classroomId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     // Delete associated vector chunks from ChromaDB
+    try {
+      if (chromaService['collection']) {
+        await chromaService['collection'].delete({
+          where: { classroomId: { $eq: classroomId } }
+        });
+      }
+    } catch {}
+
     const resources = await prisma.resource.findMany({ where: { classroomId } });
     for (const r of resources) {
       await chromaService.deleteDocumentChunks(r.id);

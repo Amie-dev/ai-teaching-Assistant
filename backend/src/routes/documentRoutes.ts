@@ -34,6 +34,9 @@ router.post(
       }
 
       const classroomId = (req.body.classroomId as string) || (req.query.classroomId as string) || undefined;
+      if (!classroomId) {
+        throw new AppError('classroomId is required to associate uploaded course materials with a classroom.', 400);
+      }
 
       const results = [];
       for (const file of files) {
