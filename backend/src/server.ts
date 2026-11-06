@@ -1,6 +1,7 @@
 import http from 'http';
 import { createApp } from './app.js';
 import { config } from './config.js';
+import { prisma } from './db.js';
 import { logger } from './utils/logger.js';
 import { chromaService } from './modules/vectorstore/chromaService.js';
 import { documentService } from './modules/ingestion/documentService.js';
@@ -24,7 +25,7 @@ async function startServer() {
     const server = http.createServer(app);
 
     // Setup real-time Socket.IO gateway for discussion halls
-    setupSocketIO(server);
+    const io = setupSocketIO(server);
 
     server.listen(config.port, () => {
       logger.info(`AI Teaching Assistant Backend v2 is running on http://localhost:${config.port}`);
@@ -34,6 +35,23 @@ async function startServer() {
       logger.info(`LLM Model: ${config.groqModel} via Groq`);
       logger.info(`Embedding Model: ${config.googleApiKey && !config.googleApiKey.startsWith('your_') ? config.googleEmbeddingModel + ' via Google (Default)' : 'Deterministic Local Vectors'}`);
     });
+
+    const shutdown = async (signal: string) => {
+      logger.info(`Received ${signal}. Shutting down server gracefully...`);
+      try {
+        io.close();
+      } catch {}
+      server.close(() => {
+        prisma.$disconnect().catch(() => {}).finally(() => {
+          process.exit(0);
+        });
+      });
+      // Safety timeout to ensure process exits within 1.2s
+      setTimeout(() => process.exit(0), 1200).unref();
+    };
+
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
   } catch (error: any) {
     logger.error('Failed to start server:', error);
     process.exit(1);
