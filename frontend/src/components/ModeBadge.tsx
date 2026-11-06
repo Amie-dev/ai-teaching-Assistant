@@ -46,3 +46,4 @@ export const ModeBadge: React.FC<ModeBadgeProps> = ({ route, isGuiding }) => {
     </span>
   );
 };
+

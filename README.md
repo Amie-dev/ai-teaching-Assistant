@@ -143,3 +143,4 @@ Verifies:
 | `GET` | `/api/documents/:id/pages/:n` | Fetch page text for the interactive Source Viewer |
 | `POST` | `/api/chat` | Send question (`question`, `conversationId`, `forceDirectAnswer`) |
 | `GET` | `/api/chat/logs` | Retrieve query latency and classification evaluation logs |
+

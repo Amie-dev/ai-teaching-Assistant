@@ -257,3 +257,4 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     </div>
   );
 };
+

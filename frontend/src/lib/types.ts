@@ -48,3 +48,4 @@ export interface HealthStatus {
     hasGroqKey: boolean;
   };
 }
+
